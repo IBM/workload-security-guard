@@ -1,0 +1,6 @@
+
+kubectl apply -f namespace.yml
+kubectl apply -f service.yml
+export KO_DOCKER_REPO=us.icr.io/knat
+ko apply -Rf deployment.yml
+
