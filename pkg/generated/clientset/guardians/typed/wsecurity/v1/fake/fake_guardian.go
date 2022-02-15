@@ -105,7 +105,7 @@ func (c *FakeGuardians) Update(ctx context.Context, guardian *wsecurityv1.Guardi
 // Delete takes name of the guardian and deletes it. Returns an error if one occurs.
 func (c *FakeGuardians) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(guardiansResource, c.ns, name, opts), &wsecurityv1.Guardian{})
+		Invokes(testing.NewDeleteAction(guardiansResource, c.ns, name), &wsecurityv1.Guardian{})
 
 	return err
 }
