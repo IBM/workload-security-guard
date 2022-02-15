@@ -1,26 +1,26 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"time"
-	"unicode"
+
+	//"unicode"
 
 	"github.com/IBM/go-security-plugs/rtplugs"
 	_ "github.com/IBM/workload-security-guard/wsgate"
 	"go.uber.org/zap"
 )
 
-func test(r rune) {
-	for name, table := range unicode.Scripts {
-		if unicode.Is(table, r) {
-			fmt.Printf("Found %s\n", name)
-		}
-	}
-}
+//func test(r rune) {
+//	for name, table := range unicode.Scripts {
+//		if unicode.Is(table, r) {
+//			fmt.Printf("Found %s\n", name)
+//		}
+//	}
+//}
 
 // Eample of a Reverse Proxy using plugs
 func main() {
