@@ -1,0 +1,24 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: guardians.wsecurity.ibmresearch.com
+  # for more information on the below annotation, please see
+  # https://github.com/kubernetes/enhancements/blob/master/keps/sig-api-machinery/2337-k8s.io-group-protection/README.md
+spec:
+  group: wsecurity.ibmresearch.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        # schema used for validation
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true  
+  names:
+    kind: Guardian
+    plural: guardians
+  scope: Namespaced

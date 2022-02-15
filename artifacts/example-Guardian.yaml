@@ -1,0 +1,127 @@
+spec:
+apiVersion: wsecurity.ibmresearch.com/v1
+kind: Guardian
+metadata:
+  name: myexample
+  namespace: default
+spec:
+  consult:
+    active: true
+    rpm: 60
+  forceAllow: false
+  req:
+    headers:
+      kv:
+        minimalSet: null
+        otherKeynames:
+          digits:
+          - max: 16
+            min: 0
+          flags: 0
+          letters:
+          - max: 16
+            min: 0
+          numbers:
+          - max: 4
+            min: 0
+          runes:
+          - max: 16
+            min: 0
+          schars:
+          - max: 2
+            min: 0
+          unicodeFlags: null
+          words:
+          - max: 4
+            min: 0
+        otherVals:
+          digits:
+          - max: 32
+            min: 0
+          flags: 34359796736
+          letters:
+          - max: 32
+            min: 0
+          numbers:
+          - max: 16
+            min: 0
+          runes:
+          - max: 32
+            min: 0
+          schars:
+          - max: 8
+            min: 0
+          unicodeFlags: null
+          words:
+          - max: 16
+            min: 0
+        vals: null
+    qs:
+      kv:
+        minimalSet: null
+        otherKeynames:
+          digits:
+          - max: 16
+            min: 0
+          flags: 0
+          letters:
+          - max: 16
+            min: 0
+          numbers:
+          - max: 4
+            min: 0
+          runes:
+          - max: 16
+            min: 0
+          schars:
+          - max: 0
+            min: 0
+          unicodeFlags: null
+          words:
+          - max: 4
+            min: 0
+        otherVals:
+          digits:
+          - max: 32
+            min: 0
+          flags: 0
+          letters:
+          - max: 32
+            min: 0
+          numbers:
+          - max: 16
+            min: 0
+          runes:
+          - max: 32
+            min: 0
+          schars:
+          - max: 0
+            min: 0
+          unicodeFlags: null
+          words:
+          - max: 16
+            min: 0
+        vals: null
+    url:
+      segments:
+      - max: 8
+        min: 0
+      val:
+        digits:
+        - max: 64
+          min: 0
+        flags: 32768
+        letters:
+        - max: 64
+          min: 0
+        numbers:
+        - max: 16
+          min: 0
+        runes:
+        - max: 64
+          min: 0
+        schars: null
+        unicodeFlags: null
+        words:
+        - max: 16
+          min: 0

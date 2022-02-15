@@ -1,0 +1,8 @@
+apiVersion: wsecurity.ibmresearch.com/v1
+kind: Guardian
+metadata:
+  name: myserver
+  namespace: default
+spec:
+  consult:
+    rpm: 30

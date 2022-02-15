@@ -1,0 +1,10 @@
+apiVersion: wsecurity.ibmresearch.com/v1
+kind: Guardian
+metadata:
+  name: guardian
+  namespace: knative-serving
+spec:
+  consult:
+    active: true
+    rpm: 60
+  forceAllow: true
