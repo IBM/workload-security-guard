@@ -1,19 +1,41 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"time"
+	"unicode"
 
 	"github.com/IBM/go-security-plugs/rtplugs"
 	_ "github.com/IBM/workload-security-guard/wsgate"
 	"go.uber.org/zap"
 )
 
+func test(r rune) {
+	for name, table := range unicode.Scripts {
+		if unicode.Is(table, r) {
+			fmt.Printf("Found %s\n", name)
+		}
+	}
+}
+
 // Eample of a Reverse Proxy using plugs
 func main() {
+	//loadUnicodeTable()
+
+	//str := "אבגדהוזחטיאבגדהוזחטיאבגדהוזחטיאבגדהוזחטיאבגדהוזחטיאבגדהוזחטיאבגדהוזחטיאבגדהוזחטיאבגדהוזחטיאבגדהוזחטי"
+	//runes := []rune(str)
+	//start := time.Now()
+	//for i := 0; i < len(runes); i++ {
+	//		test(runes[i])
+	//	}
+
+	//	test([]rune("ג")[0])
+	//	elapsed := time.Since(start)
+	//	fmt.Printf("took %s", elapsed)
 	// Sleep some, such theb  gaurd can start before you
 	time.Sleep(3 * time.Second)
 	logger, _ := zap.NewDevelopment()
@@ -30,8 +52,8 @@ func main() {
 	// Hook using RoundTripper
 	os.Setenv("WSGATE_GUARD_URL", "http://127.0.0.1:8888")
 	os.Setenv("RTPLUGS", "wsgate")
-	os.Setenv("SERVING_NAMESPACE", "mynamepsace")
-	os.Setenv("SERVING_SERVICE", "myservice")
+	os.Setenv("SERVING_NAMESPACE", "default")
+	os.Setenv("SERVING_SERVICE", "myserver")
 	rt := rtplugs.New(log)
 	if rt != nil {
 		defer rt.Close()
