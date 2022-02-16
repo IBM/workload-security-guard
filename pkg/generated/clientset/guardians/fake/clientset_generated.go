@@ -74,10 +74,7 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
-var (
-	_ clientset.Interface = &Clientset{}
-	_ testing.FakeClient  = &Clientset{}
-)
+var _ clientset.Interface = &Clientset{}
 
 // WsecurityV1 retrieves the WsecurityV1Client
 func (c *Clientset) WsecurityV1() wsecurityv1.WsecurityV1Interface {
