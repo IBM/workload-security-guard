@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: guardian-reader
+  labels:
+    rbac.authorization.k8s.io/guardian: 'true'
+rules:
+  - verbs:
+      - get
+      - list
+      - watch
+    apiGroups:
+      - wsecurity.ibmresearch.com
+    resources:
+      - guardians
+     

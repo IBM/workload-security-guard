@@ -6,8 +6,8 @@ metadata:
   namespace: default
 spec:
   consult:
-    active: true
-    rpm: 60
+    active: false
+    rpm: 0
   forceAllow: false
   req:
     headers:
