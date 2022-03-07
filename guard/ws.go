@@ -21,23 +21,48 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
+func processPile(w http.ResponseWriter, req *http.Request) {
+	// Add security to ensure that only gate can use this interface!
+	// Check that the source is from the local 10.*.*.* range
+	// Check that the
+	query := req.URL.Query()
+	sidSlice := query["sid"]
+	nsSlice := query["ns"]
+	fmt.Printf("Servicing processPile %v\n", query)
+	if len(sidSlice) != 1 || len(nsSlice) != 1 {
+		fmt.Printf("Servicing processPile missing data sid %d ns %d\n", len(sidSlice), len(nsSlice))
+		return
+	}
+	sid := sidSlice[0]
+	ns := nsSlice[0]
+	if sid == "" || ns == "" {
+		fmt.Printf("Servicing processPile missing data\n")
+		return
+	}
+	fmt.Printf("Servicing processPile of service id %s:%s\n", ns, sid)
+	data := ""
+	w.Write([]byte(data))
+}
+
 func consultOnReq(w http.ResponseWriter, req *http.Request) {
 	// Add security to ensure that only gate can use this interface!
 	// Check that the source is from the local 10.*.*.* range
 	// Check that the
 	query := req.URL.Query()
 	sidSlice := query["sid"]
+	nsSlice := query["ns"]
 	fmt.Printf("Servicing consultOnReq %v\n", query)
-	if len(sidSlice) != 1 {
-		fmt.Printf("Servicing consultOnReq missing data %d\n", len(sidSlice))
+	if len(sidSlice) != 1 || len(nsSlice) != 1 {
+		fmt.Printf("Servicing consultOnReq missing data sid %d ns %d\n", len(sidSlice), len(nsSlice))
 		return
 	}
 	sid := sidSlice[0]
-	if sid == "" {
+	ns := nsSlice[0]
+	if sid == "" || ns == "" {
 		fmt.Printf("Servicing consultOnReq missing data\n")
 		return
 	}
-	fmt.Printf("Servicing consultOnReq of service id %s\n", sid)
+	fmt.Printf("Servicing consultOnReq of service id %s:%s\n", ns, sid)
 	data := "No Way!"
 
 	w.Write([]byte(data))
@@ -245,6 +270,7 @@ func main() {
 	fmt.Printf("Starting server on port 8888\n")
 	http.HandleFunc("/config", fetchConfig)
 	http.HandleFunc("/req", consultOnReq)
+	http.HandleFunc("/pile", processPile)
 	err := http.ListenAndServe("localhost:8888", nil)
 	fmt.Printf("Failed to start %v\n", err)
 

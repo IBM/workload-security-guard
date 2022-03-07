@@ -13,11 +13,26 @@ type KeyValConfig struct {
 	OtherKeynames *SimpleValConfig            `json:"otherKeynames"` // Profile the keynames of other keys
 }
 
+type KeyValPile struct {
+	Vals map[string]*SimpleValPile
+}
+
 type KeyValProfile struct {
 	Vals map[string]*SimpleValProfile
 }
 
 type void struct{}
+
+func (p *KeyValPile) Add(kv *KeyValProfile) {
+	for key, kv_profile := range kv.Vals {
+		key_pile, exists := p.Vals[key]
+		if !exists {
+			key_pile = new(SimpleValPile)
+			p.Vals[key] = key_pile
+		}
+		key_pile.Add(kv_profile)
+	}
+}
 
 // Profile a generic map of key vals where we expect:
 // keys belonging to some contstant list of keys

@@ -52,6 +52,7 @@ type plug struct {
 	numConsultsCount    uint16
 	httpc               http.Client
 	cycle               int
+	allowedPile         spec.ReqPile
 }
 
 func GetMD5Hash(text string) string {
@@ -453,6 +454,46 @@ func (p *plug) consultOnRequest(reqProfile *spec.ReqProfile) string {
 	return ""
 }
 
+func (p *plug) reportAllowedPile(reqPile *spec.ReqPile) string {
+	postBody, marshalErr := json.Marshal(reqPile)
+	if marshalErr != nil {
+		log.Printf("reportAllowedPile error during marshal: %v", marshalErr)
+		return fmt.Sprintf("Cant marshal in reportAllowedPile %v", marshalErr)
+	}
+	reqBody := bytes.NewBuffer(postBody)
+	req, err := http.NewRequest(http.MethodPost, p.guardUrl+"/pile", reqBody)
+	if err != nil {
+		pi.Log.Infof("wsgate reportAllowedPile: http.NewRequest error %v", err)
+	}
+	query := req.URL.Query()
+	query.Add("sid", p.serviceId)
+	query.Add("ns", p.namespace)
+	req.URL.RawQuery = query.Encode()
+
+	res, postErr := p.httpc.Do(req)
+	//res, postErr := p.httpc.Post(p.guardUrl+"/req", "application/json", reqBody)
+	if postErr != nil {
+		pi.Log.Infof("wsgate reportAllowedPile: httpc.Do error %v", postErr)
+		return fmt.Sprintf("Guard unavaliable during consult %v", postErr)
+	}
+
+	if res.Body != nil {
+		defer res.Body.Close()
+	}
+
+	body, readErr := ioutil.ReadAll(res.Body)
+	if readErr != nil {
+		pi.Log.Infof("wsgate reportAllowedPile: response error %v", readErr)
+		return fmt.Sprintf("Guard ilegal response during consult %v", readErr)
+	}
+	if len(body) != 0 {
+		pi.Log.Infof("wsgate reportAllowedPile: response is %s", string(body))
+		return fmt.Sprintf("Guard: %s", string(body))
+	}
+	pi.Log.Infof("wsgate reportAllowedPile: approved!")
+	return ""
+}
+
 func (p *plug) reportBlock(req *spec.ReqProfile, decission string) {
 	// build statistics on blocked requests
 	p.cycle--
@@ -464,6 +505,8 @@ func (p *plug) reportBlock(req *spec.ReqProfile, decission string) {
 
 func (p *plug) reportAllow(req *spec.ReqProfile) {
 	// build statistics on allowed requests
+	p.allowedPile.Add(req)
+	p.reportAllowedPile(&p.allowedPile)
 	p.cycle--
 	if p.cycle <= 0 {
 		//p.ReportToGuard()
@@ -512,11 +555,11 @@ func (p *plug) initCrd() {
 func (p *plug) readCrd(namespace string, serviceId string) *spec.GuardianSpec {
 	g, err := p.gClient.Guardians(namespace).Get(context.TODO(), serviceId, metav1.GetOptions{})
 	if err != nil {
-		pi.Log.Infof("Err during get %s.%s: %s\n", serviceId, namespace, err.Error())
+		pi.Log.Infof("Err during get %s.%s: %s", serviceId, namespace, err.Error())
 		//panic(fmt.Sprintf("No Guardian! for %s.%s", serviceId, namespace))
 		return nil
 	}
-	pi.Log.Infof("Found guardian %s.%s\n", serviceId, namespace)
+	pi.Log.Infof("Found guardian %s.%s", serviceId, namespace)
 	fmt.Print((*spec.WsGate)(g.Spec).Marshal(0))
 	return g.Spec
 }

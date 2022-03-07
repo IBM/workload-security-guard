@@ -12,11 +12,11 @@ Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem
 Why do we use it?
 `
 
-var flags1 uint64 = uint64(8592052353)
+var flags1 uint32 = uint32(92052353)
 
 func TestDescriptionSimpleVals(t *testing.T) {
 	t.Run("LoremIpsum", func(t *testing.T) {
-		fmt.Printf("TestDescriptionSimpleVals: %s\n", NameFlags(0xFFFFFFFFFFFFFFFF))
+		fmt.Printf("TestDescriptionSimpleVals: %s\n", NameFlags(0xFFFFFFFF))
 	})
 
 }
@@ -129,9 +129,9 @@ func TestProfileSimpleVals(t *testing.T) {
 
 			svp := new(SimpleValProfile)
 			svp.Profile(string(r))
-			var flags uint64
+			var flags uint32
 			if c < 32 { //0-31
-				flags |= 1 << nonReadableCharSlot
+				flags |= 1 << NonReadableCharSlot
 			} else if c < 33 { //32 space
 				flags |= 1
 			} else if c < 48 { //32-47
@@ -160,10 +160,10 @@ func TestProfileSimpleVals(t *testing.T) {
 				flags |= 1 << slot
 				specialCharCounter++
 			} else if c < 128 { //127
-				flags |= 1 << nonReadableCharSlot
-			} else { //unicode
-				flags |= 1 << UnicodeCharSlot
-			}
+				flags |= 1 << NonReadableCharSlot
+			} //else { //unicode
+			//	flags |= 1 << UnicodeCharSlot
+			//}
 			if svp.Flags != flags {
 				t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
 			}
@@ -181,9 +181,9 @@ func TestProfileSimpleVals(t *testing.T) {
 			}
 		})
 	}
-	var flags uint64
+	var flags uint32
 	var str, name string
-	flags = 0x1<<SlashAsteriskCommentSlot | 0x1<<DivSlot | 0x1<<MultSlot
+	flags = 0x1<<CommentsSlot | 0x1<<SlashSlot | 0x1<<AsteriskSlot
 	str = "/*"
 	name = fmt.Sprintf("testString %s", str)
 	t.Run(name, func(t *testing.T) {
@@ -195,7 +195,7 @@ func TestProfileSimpleVals(t *testing.T) {
 			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
 		}
 	})
-	flags = 0x1<<SlashAsteriskCommentSlot | 0x1<<DivSlot | 0x1<<MultSlot
+	flags = 0x1<<CommentsSlot | 0x1<<SlashSlot | 0x1<<AsteriskSlot
 	str = "*/"
 	name = fmt.Sprintf("testString %s", str)
 	t.Run(name, func(t *testing.T) {
@@ -229,8 +229,8 @@ func TestProfileSimpleVals(t *testing.T) {
 		}
 	})
 	const str2 = "日本語"
-	flags = 0x1 << UnicodeCharSlot
-	unicode := []uint64{0, 0, 0, 9216, 1048576}
+	//flags = 0x1 << UnicodeCharSlot
+	unicode := []uint32{0, 0, 0, 9216, 1048576}
 	name = fmt.Sprintf("testString %s", str2)
 	t.Run(name, func(t *testing.T) {
 		svp := new(SimpleValProfile)
@@ -246,7 +246,7 @@ func TestProfileSimpleVals(t *testing.T) {
 		}
 	})
 	const str3 = "{!}"
-	flags = SetFlags([]int{ExclamationSlot, LeftCurlyBrecketSlot, RightCurlyBrecketSlot})
+	flags = SetFlags([]int{ExclamationSlot, CurlyBrecketSlot})
 	name = fmt.Sprintf("testString %s", str3)
 	t.Run(name, func(t *testing.T) {
 		svp := new(SimpleValProfile)
@@ -306,8 +306,8 @@ func TestProfileSimpleVals(t *testing.T) {
 
 	})
 	var str6 string = string([]rune{rune(200), rune(201), rune(202)})
-	flags = 0x1 << UnicodeCharSlot
-	unicode = []uint64{1}
+	//flags = 0x1 << UnicodeCharSlot
+	unicode = []uint32{1}
 	name = fmt.Sprintf("testString %s", str6)
 	t.Run(name, func(t *testing.T) {
 		svp := new(SimpleValProfile)
@@ -331,8 +331,8 @@ func TestProfileSimpleVals(t *testing.T) {
 		}
 	}
 	str7 := string(byteSlice)
-	flags = 0x7FFFFFFFF
-	unicode = []uint64{1}
+	flags = 0xFFFFFFFF
+	unicode = []uint32{1}
 	t.Run("testString allletters", func(t *testing.T) {
 		svp := new(SimpleValProfile)
 		svp.Profile(str7)

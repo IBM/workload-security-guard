@@ -11,4 +11,7 @@ require (
 	k8s.io/klog/v2 v2.30.0
 )
 
-require github.com/IBM/go-security-plugs v1.1.1-0.20220217135704-2792fac15905
+require (
+	github.com/IBM/go-security-plugs v1.1.1-0.20220217135704-2792fac15905
+	github.com/gorilla/mux v1.8.0
+)

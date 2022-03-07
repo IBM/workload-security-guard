@@ -11,12 +11,12 @@ type U8Minmax struct {
 }
 
 type U8MinmaxSlice []U8Minmax
-type Uint64Slice []uint64
+type Uint32Slice []uint32
 
-func (base Uint64Slice) Add(val Uint64Slice) Uint64Slice {
+func (base Uint32Slice) Add(val Uint32Slice) Uint32Slice {
 	if missing := len(val) - len(base); missing > 0 {
 		// Dynamically allocate as many blockElements as needed for this config
-		base = append(base, make([]uint64, missing)...)
+		base = append(base, make([]uint32, missing)...)
 	}
 	for i, v := range val {
 		base[i] = base[i] | v
@@ -24,7 +24,7 @@ func (base Uint64Slice) Add(val Uint64Slice) Uint64Slice {
 	return base
 }
 
-func (base Uint64Slice) Decide(val Uint64Slice) string {
+func (base Uint32Slice) Decide(val Uint32Slice) string {
 	for i, v := range val {
 		if v == 0 {
 			continue
@@ -37,7 +37,7 @@ func (base Uint64Slice) Decide(val Uint64Slice) string {
 	return ""
 }
 
-func (uint64Slice Uint64Slice) Describe() string {
+func (uint64Slice Uint32Slice) Describe() string {
 	if uint64Slice != nil {
 		var description bytes.Buffer
 		description.WriteString("Unicode slice: ")
@@ -50,7 +50,7 @@ func (uint64Slice Uint64Slice) Describe() string {
 	return ""
 }
 
-func (uint64Slice Uint64Slice) Marshal() string {
+func (uint64Slice Uint32Slice) Marshal() string {
 	if uint64Slice == nil {
 		return "null"
 	}

@@ -6,28 +6,41 @@ import (
 	"strings"
 )
 
-type SimpleValConfig struct { // 16 bytes
-	Flags uint64 `json:"flags"`
-	//Counters     [8]U8MinmaxSlice
+type SimpleValConfig struct {
+	//FlagsL       uint32        `json:"flagsl"`
+	//FlagsH       uint32        `json:"flagsh"`
+	Flags        uint32        `json:"flags"`
 	Runes        U8MinmaxSlice `json:"runes"`
 	Digits       U8MinmaxSlice `json:"digits"`
 	Letters      U8MinmaxSlice `json:"letters"`
 	SpecialChars U8MinmaxSlice `json:"schars"`
 	Words        U8MinmaxSlice `json:"words"`
 	Numbers      U8MinmaxSlice `json:"numbers"`
-	UnicodeFlags Uint64Slice   `json:"unicodeFlags"` //[]uint64
+	UnicodeFlags Uint32Slice   `json:"unicodeFlags"` //[]uint32
 }
 
-type SimpleValProfile struct { // 16 bytes
-	Flags uint64
-	//BasicCounters [8]uint8
+type SimpleValPile struct {
+	//Flags        uint64
+	Flags        uint32
+	Runes        []uint8
+	Digits       []uint8
+	Letters      []uint8
+	SpecialChars []uint8
+	Words        []uint8
+	Numbers      []uint8
+	UnicodeFlags Uint32Slice //[]uint32
+}
+
+type SimpleValProfile struct {
+	//Flags        uint64
+	Flags        uint32
 	Runes        uint8
 	Digits       uint8
 	Letters      uint8
 	SpecialChars uint8
 	Words        uint8
 	Numbers      uint8
-	UnicodeFlags Uint64Slice //[]uint64
+	UnicodeFlags Uint32Slice //[]uint32
 }
 
 // Slots and counters for AsciiDaya:
@@ -42,50 +55,47 @@ type SimpleValProfile struct { // 16 bytes
 // 127 (1) nonReadableRCharCounter
 // Slots:
 // <SPACE> ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~
-//    0    1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2
+//    0    1 2 3 4 5 6 7 8 8 9 0 1 2 3 4 5 6 7 8 7 9 0 1 2 1 3 4 5 6 7 6 9 0 1 2
 const ( // Slots for Ascii 0-127
-	SpaceSlot = iota
-	ExclamationSlot
-	DoubleQouteSlot
-	NumberSlot
-	DollarSlot
-	PrecentSlot
-	andSlot
-	SingleQouteSlot
-	LeftRoundBrecketSlot
-	RightRoundBrecketSlot
-	MultSlot // 10
-	PlusSlot
-	CommentSlot
-	MinusSlot
-	DotSlot
-	DivSlot
-	ColonSlot
-	SemiSlot
-	LtSlot
-	EqualSlot
-	GtSlot // 20
-	QuestionSlot
-	CommaSlot
-	LeftSquareBrecketSlot
-	RdivideSlot
-	RightSquareBrecketSlot
-	PowerSlot
-	UnderscoreSlot
-	AccentSlot
-	LeftCurlyBrecketSlot
-	PipeSlot // 30
-	RightCurlyBrecketSlot
-	HomeSlot            // 32
-	nonReadableCharSlot // 33
-	UnicodeCharSlot     // 34
+	SpaceSlot           = iota // 32
+	ExclamationSlot            // 33
+	DoubleQouteSlot            // 34
+	NumberSlot                 // 35
+	DollarSlot                 // 36
+	PrecentSlot                // 37
+	AmpersandSlot              // 38
+	SingleQouteSlot            // 39
+	RoundBrecketSlot           // 40, 41
+	AsteriskSlot               // 42
+	PlusSlot                   // 43 (10)
+	CommaSlot                  // 44
+	MinusSlot                  // 45
+	PeriodSlot                 // 46
+	SlashSlot                  // 47
+	ColonSlot                  // 58 (15)
+	SemiSlot                   // 59
+	LtGtSlot                   // 60, 62
+	EqualSlot                  //61
+	QuestionSlot               // 63
+	AtSlot                     // 64 (20)
+	BackslashSlot              // 92 (21)
+	SquareBrecketSlot          // 91, 93
+	PowerSlot                  // 94
+	UnderscoreSlot             // 95
+	AccentSlot                 // 96
+	PipeSlot                   // 124 (26)
+	CurlyBrecketSlot           // 123, 125
+	HomeSlot                   // 126
+	NonReadableCharSlot        // 0-31, 127 (29)
+	CommentsSlot
+	HexSlot // (31)
 )
+
+/*
 const ( // Slots for any code
-	SlashAsteriskCommentSlot = iota + 35
-	SqlCommentSlot
-	HexSlot
 	LASTSLOT__
 )
+*/
 
 const (
 	TotalCounter = iota
@@ -110,54 +120,48 @@ var CounterName = map[int]string{
 }
 
 var FlagName = map[int]string{
-	SpaceSlot:                "Space",
-	ExclamationSlot:          "Exclamation",
-	DoubleQouteSlot:          "DoubleQoute",
-	NumberSlot:               "NumberSign",
-	DollarSlot:               "DollarSign",
-	PrecentSlot:              "PrecentSign",
-	SingleQouteSlot:          "SingleQoute",
-	LeftRoundBrecketSlot:     "LeftRoundBrecket",
-	RightRoundBrecketSlot:    "RightRoundBrecket",
-	MultSlot:                 "MultiplySign",
-	PlusSlot:                 "PlusSign",
-	CommentSlot:              "CommentSign",
-	MinusSlot:                "MinusSign",
-	DotSlot:                  "DotSign",
-	DivSlot:                  "DivideSign",
-	ColonSlot:                "ColonSign",
-	SemiSlot:                 "SemicolonSign",
-	LtSlot:                   "LessThenSign",
-	EqualSlot:                "EqualSign",
-	GtSlot:                   "GreaterThenSign",
-	QuestionSlot:             "QuestionMark",
-	CommaSlot:                "CommaSign",
-	LeftSquareBrecketSlot:    "LeftSquareBrecket",
-	RdivideSlot:              "ReverseDivideSign",
-	RightSquareBrecketSlot:   "RightSquareBrecket",
-	PowerSlot:                "PowerSign",
-	UnderscoreSlot:           "UnderscoreSign",
-	AccentSlot:               "AccentSign",
-	LeftCurlyBrecketSlot:     "LeftCurlyBrecket",
-	PipeSlot:                 "PipeSign",
-	RightCurlyBrecketSlot:    "RightCurlyBrecket",
-	nonReadableCharSlot:      "NonReadableChar",
-	UnicodeCharSlot:          "UnicodeChar",
-	SlashAsteriskCommentSlot: "CommentCombination",
-	SqlCommentSlot:           "SqlComment",
-	HexSlot:                  "HexCombination",
+	SpaceSlot:           "Space",
+	ExclamationSlot:     "Exclamation",
+	DoubleQouteSlot:     "DoubleQoute",
+	NumberSlot:          "NumberSign",
+	DollarSlot:          "DollarSign",
+	PrecentSlot:         "PrecentSign",
+	SingleQouteSlot:     "SingleQoute",
+	RoundBrecketSlot:    "RoundBrecket",
+	AsteriskSlot:        "MultiplySign",
+	PlusSlot:            "PlusSign",
+	AtSlot:              "CommentSign",
+	MinusSlot:           "MinusSign",
+	PeriodSlot:          "DotSign",
+	SlashSlot:           "DivideSign",
+	ColonSlot:           "ColonSign",
+	SemiSlot:            "SemicolonSign",
+	LtGtSlot:            "Less/GreaterThanSign",
+	EqualSlot:           "EqualSign",
+	QuestionSlot:        "QuestionMark",
+	CommaSlot:           "CommaSign",
+	SquareBrecketSlot:   "SquareBrecket",
+	BackslashSlot:       "ReverseDivideSign",
+	PowerSlot:           "PowerSign",
+	UnderscoreSlot:      "UnderscoreSign",
+	AccentSlot:          "AccentSign",
+	CurlyBrecketSlot:    "CurlyBrecket",
+	PipeSlot:            "PipeSign",
+	NonReadableCharSlot: "NonReadableChar",
+	CommentsSlot:        "CommentsCombination",
+	HexSlot:             "HexCombination",
 }
 
-func SetFlags(slots []int) (f uint64) {
+func SetFlags(slots []int) (f uint32) {
 	for _, slot := range slots {
 		f = f | (0x1 << slot)
 	}
 	return
 }
-func NameFlags(f uint64) string {
+func NameFlags(f uint32) string {
 	var ret bytes.Buffer
-	mask := uint64(0x1)
-	for i := 0; i < LASTSLOT__; i++ {
+	mask := uint32(0x1)
+	for i := 0; i < 32; i++ {
 		if (f & mask) != 0 {
 			ret.WriteString(FlagName[i])
 			ret.WriteString(" ")
@@ -193,11 +197,30 @@ func (svp *SimpleValProfile) NameFlags() string {
 	return NameFlags(svp.Flags)
 }
 
+/*
+func convert64To32(v uint64) (vL uint32, vH uint32) {
+	vL = uint32(v)
+	vH = uint32(v >> 32)
+	return
+}
+
+func convert32To64(vL uint32, vH uint32) (v uint64) {
+	v = (uint64(vH) << 32) & uint64(vL)
+	return
+}
+*/
 //func (svp *SimpleValProfile) Decide(config *SimpleValConfig) string {
 func (config *SimpleValConfig) Decide(svp *SimpleValProfile) string {
-
-	if (svp.Flags & ^config.Flags) != 0 {
-		return fmt.Sprintf("Unexpected Flags %s (%x) in Value", NameFlags(svp.Flags & ^config.Flags), svp.Flags & ^config.Flags)
+	//flagsL, flagsH := convert64To32(svp.Flags)
+	//flagsL = flagsL & ^config.FlagsL
+	//flagsH = flagsH & ^config.FlagsH
+	//flags := convert32To64(flagsL, flagsH)
+	flags := svp.Flags & ^config.Flags
+	//if (flagsL != 0) || (flagsH != 0) {
+	//return fmt.Sprintf("Unexpected FlagsL %s (%x) in Value", NameFlags(flags), flags)
+	//}
+	if flags != 0 {
+		return fmt.Sprintf("Unexpected Flags %s (%x) in Value", NameFlags(flags), flags)
 	}
 	if ret := config.UnicodeFlags.Decide(svp.UnicodeFlags); ret != "" {
 		return ret
@@ -223,14 +246,30 @@ func (config *SimpleValConfig) Decide(svp *SimpleValProfile) string {
 	return ""
 }
 
+func (p *SimpleValPile) Add(svp *SimpleValProfile) {
+	p.Digits = append(p.Digits, svp.Digits)
+	p.Letters = append(p.Letters, svp.Letters)
+	p.Numbers = append(p.Numbers, svp.Numbers)
+	p.Words = append(p.Words, svp.Words)
+	p.Runes = append(p.Runes, svp.Runes)
+	p.SpecialChars = append(p.SpecialChars, svp.SpecialChars)
+	p.Flags |= svp.Flags
+	for i := 0; i < len(p.UnicodeFlags); i++ {
+		p.UnicodeFlags[i] |= svp.UnicodeFlags[i]
+	}
+	for i := len(p.UnicodeFlags); i < len(svp.UnicodeFlags); i++ {
+		p.UnicodeFlags = append(p.UnicodeFlags, svp.UnicodeFlags[i])
+	}
+}
+
 // Profile generic value where we expect:
 // some short combination of chars
 // mainly english letters and/or digits (ascii)
 // potentially some small content of special chars
 // typically no unicode
 func (svp *SimpleValProfile) Profile(str string) {
-	var flags uint64
-	unicodeFlags := []uint64{}
+	var flags uint32
+	unicodeFlags := []uint32{}
 	digitCounter := uint(0)
 	letterCounter := uint(0)
 	specialCharCounter := uint(0)
@@ -249,22 +288,26 @@ func (svp *SimpleValProfile) Profile(str string) {
 				if c < '0' { //0-47
 					if c > 32 { //33-47
 						slot := uint(c - 32)
+						if c >= 41 { //41-47
+							slot = slot - 1
+						}
 						flags |= 0x1 << slot
 						specialCharCounter++
+
 						if c == '/' {
 							if asterisk {
-								flags |= 1 << SlashAsteriskCommentSlot
+								flags |= 1 << CommentsSlot
 							}
 						}
 						if slash && c == '*' {
-							flags |= 1 << SlashAsteriskCommentSlot
+							flags |= 1 << CommentsSlot
 						}
 						if minus && c == '-' {
-							flags |= 1 << SqlCommentSlot
+							flags |= 1 << CommentsSlot
 						}
 
 					} else if c < 32 { //0-31
-						flags |= 1 << nonReadableCharSlot
+						flags |= 1 << NonReadableCharSlot
 					} else { //32 space
 						flags |= 0x1
 					}
@@ -273,7 +316,13 @@ func (svp *SimpleValProfile) Profile(str string) {
 					digit = true
 					digits++
 				} else { //58-64
-					slot := uint(c - 58 + 16)
+					slot := uint(c - 58 + 15)
+					if c > 61 { // 63-64
+						slot = slot - 1
+						if c == 62 { //62
+							slot = slot - 1
+						}
+					}
 					flags |= 0x1 << slot
 					specialCharCounter++
 				}
@@ -285,7 +334,10 @@ func (svp *SimpleValProfile) Profile(str string) {
 				letter = true
 				letters++
 			} else { //91-96
-				slot := uint(c - 91 + 23)
+				slot := uint(c - 91 + 20)
+				if c == 91 {
+					slot = slot + 2
+				}
 				flags |= 0x1 << slot
 				specialCharCounter++
 			}
@@ -297,23 +349,26 @@ func (svp *SimpleValProfile) Profile(str string) {
 			letter = true
 			letters++
 		} else if c < 127 { //123-126
-			slot := uint(c - 123 + 29)
+			slot := uint(c - 123 + 25)
+			if c == 123 {
+				slot = slot + 2
+			}
 			flags |= 0x1 << slot
 			specialCharCounter++
 		} else if c < 128 { //127
-			flags |= 0x1 << nonReadableCharSlot
+			flags |= 0x1 << NonReadableCharSlot
 		} else {
 			// Unicode -  128 and onwards
-			flags |= 0x1 << UnicodeCharSlot
+
 			// Next we use a rought but quick way to profile unicodes using blocks of 128 codes
 			// Block 0 is 128-255, block 1 is 256-383...
 			// BlockBit represent the bit in a blockElement. Each blockElement carry 64 bits
 			block := (c / 0x80) - 1
-			blockBit := int(block & 0x3F)
-			blockElement := int(block / 0x40)
+			blockBit := int(block & 0x1F)
+			blockElement := int(block / 0x20)
 			if blockElement >= len(unicodeFlags) {
 				// Dynamically allocate as many blockElements as needed for this profile
-				unicodeFlags = append(unicodeFlags, make([]uint64, blockElement-len(unicodeFlags)+1)...)
+				unicodeFlags = append(unicodeFlags, make([]uint32, blockElement-len(unicodeFlags)+1)...)
 			}
 			unicodeFlags[blockElement] |= 0x1 << blockBit
 		}
@@ -391,6 +446,9 @@ func (svp *SimpleValProfile) Describe() string {
 func (config *SimpleValConfig) AddValExample(str string) {
 	svp := new(SimpleValProfile)
 	svp.Profile(str)
+	//flagsL, flagsH := convert64To32(svp.Flags)
+	//config.FlagsL |= flagsL
+	//config.FlagsH |= flagsH
 	config.Flags |= svp.Flags
 	config.Runes = config.Runes.AddValExample(svp.Runes)
 	config.Digits = config.Digits.AddValExample(svp.Digits)
@@ -402,7 +460,9 @@ func (config *SimpleValConfig) AddValExample(str string) {
 }
 
 func (config *SimpleValConfig) NameFlags() string {
-	return NameFlags(config.Flags)
+	//flags := convert32To64(config.FlagsL, config.FlagsH)
+	flags := config.Flags
+	return NameFlags(flags)
 }
 
 func (config *SimpleValConfig) Describe() string {
@@ -432,6 +492,10 @@ func (config *SimpleValConfig) Marshal(depth int) string {
 	shift := strings.Repeat("  ", depth)
 	description.WriteString("{\n")
 	description.WriteString(shift)
+	//description.WriteString(fmt.Sprintf("  FlagsL: 0x%x,\n", config.FlagsL))
+	//description.WriteString(shift)
+	//description.WriteString(fmt.Sprintf("  FlagsH: 0x%x,\n", config.FlagsH))
+	//description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Flags: 0x%x,\n", config.Flags))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  UnicodeFlags: %s,\n", config.UnicodeFlags.Marshal()))
