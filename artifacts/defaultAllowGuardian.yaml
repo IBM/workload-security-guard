@@ -4,7 +4,9 @@ metadata:
   name: guardian
   namespace: knative-serving
 spec:
-  consult:
-    active: true
+  control:
+    consolt: true
     rpm: 60
-  forceAllow: true
+    block: false
+    learn: true
+    auto: true

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -37,6 +38,10 @@ var gui *guardianui
 func (gui *guardianui) setCrd(namespace string, serviceId string, guardianSpec *spec.GuardianSpec) bool {
 	var g *spec.Guardian
 	var err error
+
+	fmt.Print("setCrd\n")
+
+	fmt.Print((*spec.WsGate)(guardianSpec).Marshal(0))
 	g, err = gui.gClient.Guardians(namespace).Get(context.TODO(), serviceId, metav1.GetOptions{})
 	if err == nil {
 		fmt.Printf("setCrd: guardian read succesful %v\n", g)
@@ -111,11 +116,24 @@ func setGuadian(w http.ResponseWriter, r *http.Request) {
 	service := mux.Vars(r)["service"]
 	fmt.Printf("Guardian Set %s in namespace: %s\n", service, namespace)
 
-	var g spec.GuardianSpec
+	b, err1 := io.ReadAll(r.Body)
+	if err1 != nil {
+		fmt.Printf("Failed to read Body\n")
+		return
+	}
+	str := string(b)
+	fmt.Printf("Received: %s\n", str)
 
+	var g spec.GuardianSpec
+	if g.Contigured == nil {
+		g.Contigured = new(spec.Critiria)
+	}
+	g.Contigured.Normalize()
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
-	err := json.NewDecoder(r.Body).Decode(&g)
+	err := json.Unmarshal([]byte(str), &g)
+
+	//Serr := json.NewDecoder(r.Body).Decode(&g)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)

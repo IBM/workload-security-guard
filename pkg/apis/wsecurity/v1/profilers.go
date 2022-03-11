@@ -54,6 +54,9 @@ func (uint64Slice Uint32Slice) Marshal() string {
 	if uint64Slice == nil {
 		return "null"
 	}
+	if len(uint64Slice) == 0 {
+		return "[]"
+	}
 	var description bytes.Buffer
 	description.WriteString(fmt.Sprintf("[%x", uint64Slice[0]))
 	for i := 1; i < len(uint64Slice); i++ {
@@ -65,18 +68,23 @@ func (uint64Slice Uint32Slice) Marshal() string {
 }
 
 func (mms U8MinmaxSlice) Decide(v uint8) string {
-	if len(mms) > 0 && v > 0 {
-		for j := 0; j < len(mms); j++ {
-			if v < mms[j].Min {
-				break
-			}
-			if v <= mms[j].Max { // found ok interval
-				return ""
-			}
-		}
-		return fmt.Sprintf("Counter out of Range: %d", v)
+	if v == 0 {
+		return ""
 	}
-	return ""
+	// v>0
+	if len(mms) == 0 {
+		return fmt.Sprintf("Value %d Not Allowed!", v)
+	}
+
+	for j := 0; j < len(mms); j++ {
+		if v < mms[j].Min {
+			break
+		}
+		if v <= mms[j].Max { // found ok interval
+			return ""
+		}
+	}
+	return fmt.Sprintf("Counter out of Range: %d", v)
 }
 
 func (mms U8MinmaxSlice) AddValExample(v uint8) U8MinmaxSlice {

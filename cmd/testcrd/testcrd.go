@@ -89,9 +89,9 @@ func main() {
 	g.APIVersion = "wsecurity.ibmresearch.com/v1"
 	g.Name = "mytest"
 	g.Spec = new(wsecurity.GuardianSpec)
-	g.Spec.ConsultGuard.Active = true
-	g.Spec.ConsultGuard.RequestsPerMinuete = 60
-	g.Spec.Req.AddTypicalVal()
+	g.Spec.Control.Consult = true
+	g.Spec.Control.RequestsPerMinuete = 60
+	g.Spec.Contigured.Req.AddTypicalVal()
 	/*g.Spec.ForceAllow = true
 	g.Spec.Req.Url.Segments = make(wsecurity.U8MinmaxSlice, 1)
 	g.Spec.Req.Url.Segments[0].Max = 4
@@ -108,7 +108,7 @@ func main() {
 	g, err = client.Guardians("default").Get(context.TODO(), "mytest", v1.GetOptions{})
 	fmt.Printf("last get err %v\n", err)
 	fmt.Printf("guardian %v\n", g)
-	fmt.Printf("guardian rpm %d\n", g.Spec.ConsultGuard.RequestsPerMinuete)
+	fmt.Printf("guardian rpm %d\n", g.Spec.Control.RequestsPerMinuete)
 	//kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	//exampleInformerFactory := informers.NewSharedInformerFactory(exampleClient, time.Second*30)
 

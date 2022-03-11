@@ -1,20 +1,20 @@
-import React from "react";
+import React, {useEffect} from "react";
 import TreeItem from '@mui/lab/TreeItem';
 import { KeyVal } from './KeyVal';
+import {Toggle} from './Guardian'
 
 
 function Qs(props) {
-  var { data, onDataChange,nodeId,  name } = props;
+  var { data, onDataChange, nodeId,  name } = props;
   if (!data.kv) data.kv = {}
 
-  //let value = data
+  useEffect(() => {
+    Toggle([nodeId+">KeyVal"])
+  }, [nodeId]);
+  
   function handleKvChange(d) {
-    //if (d) {
-      //data.kv = d
-      //console.log("handleKvChange", data)  
-      onDataChange(data)
-      //setData(value);
-    //}
+    console.log("handleKvChange", data, d)  
+    onDataChange(data)
   };
 
 return (

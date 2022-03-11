@@ -7,10 +7,11 @@ import (
 )
 
 type KeyValConfig struct {
-	Vals          map[string]*SimpleValConfig `json:"vals"`          // Profile the value of whitelisted keys
-	MinimalSet    map[string]void             `json:"minimalSet"`    // Mandatory keys
-	OtherVals     *SimpleValConfig            `json:"otherVals"`     // Profile the values of other keys
-	OtherKeynames *SimpleValConfig            `json:"otherKeynames"` // Profile the keynames of other keys
+	Vals map[string]*SimpleValConfig `json:"vals"` // Profile the value of whitelisted keys
+	//MinimalSet    map[string]void             `json:"minimalSet,omitempty"`    // Mandatory keys
+	//MinimalSet    map[string]struct{} `json:"minimalSet,omitempty"`    // Mandatory keys
+	OtherVals     *SimpleValConfig `json:"otherVals"`     // Profile the values of other keys
+	OtherKeynames *SimpleValConfig `json:"otherKeynames"` // Profile the keynames of other keys
 }
 
 type KeyValPile struct {
@@ -21,7 +22,7 @@ type KeyValProfile struct {
 	Vals map[string]*SimpleValProfile
 }
 
-type void struct{}
+//type void struct{}
 
 func (p *KeyValPile) Add(kv *KeyValProfile) {
 	for key, kv_profile := range kv.Vals {
@@ -56,22 +57,66 @@ func (kvp *KeyValProfile) Profile(m map[string][]string) {
 	}
 }
 
+func (kvp *KeyValProfile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+
+	if len(kvp.Vals) > 0 {
+		description.WriteString(shift)
+		description.WriteString("  Vals: {\n")
+		for k, v := range kvp.Vals {
+			description.WriteString(shift)
+			description.WriteString(fmt.Sprintf("  , %s: %s", k, v.Marshal(depth+2)))
+		}
+		description.WriteString(shift)
+		description.WriteString("  }\n")
+	}
+
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
+func (config *KeyValConfig) Normalize() {
+	//config.MinimalSet = make(map[string]void)
+	//config.MinimalSet = make(map[string]struct{})
+	if config.OtherVals == nil {
+		config.OtherVals = new(SimpleValConfig)
+	}
+	if config.OtherKeynames == nil {
+		config.OtherKeynames = new(SimpleValConfig)
+	}
+	config.OtherVals.Normalize()
+	config.OtherKeynames.Normalize()
+	for k, v := range config.Vals {
+		if v == nil {
+			v = new(SimpleValConfig)
+			config.Vals[k] = v
+		}
+		v.Normalize()
+	}
+}
+
 func (config *KeyValConfig) Decide(kvp *KeyValProfile) string {
 	//if config == nil || !config.Enable {
 	//	return ""
 	//}
 
 	// Duplicate minimalSet map
-	var required void
-	minimalSet := make(map[string]void, len(config.MinimalSet))
+	//var required void
+	var required struct{}
+	//minimalSet := make(map[string]void, len(config.MinimalSet))
+	minimalSet := make(map[string]struct{}, len(config.Vals))
 
-	for k := range config.MinimalSet {
-		minimalSet[k] = required
+	for k, v := range config.Vals {
+		if v.Mandatory {
+			minimalSet[k] = required
+		}
 	}
 
 	// For each key-val, decide! and remove from minimalSet
 	if kvp.Vals != nil {
-
 		for k, v := range kvp.Vals {
 			delete(minimalSet, k) // Remove from minimalSet
 			// Decide based on a known key
@@ -133,16 +178,19 @@ func (config *KeyValConfig) SetMandatoryKeys(minimalSet []string) {
 		panic("Keys should be set with WhitelistKnownKeys before becoming Mandatory")
 	}
 
-	if config.MinimalSet == nil {
-		config.MinimalSet = make(map[string]void, len(minimalSet))
-	}
+	//if config.MinimalSet == nil {
+	//config.MinimalSet = make(map[string]void, len(minimalSet))
+	//	config.MinimalSet = make(map[string]struct{}, len(minimalSet))
+	//}
 
-	var required void
+	//var required void
+	//var required struct{}
+
 	for _, k := range minimalSet {
 		if _, exists := config.Vals[k]; !exists {
 			panic(fmt.Sprintf("Key \"%s\" should be set with WhitelistKnownKeys before becoming Mandatory", k))
 		}
-		config.MinimalSet[k] = required
+		config.Vals[k].Mandatory = true
 	}
 }
 
@@ -170,7 +218,7 @@ func (config *KeyValConfig) Describe() string {
 
 	if config.Vals != nil {
 		for k, v := range config.Vals {
-			if _, exists := config.MinimalSet[k]; exists {
+			if v.Mandatory {
 				description.WriteString(" | MandatoryKey: ")
 			} else {
 				description.WriteString(" | OptionalKey: ")
@@ -196,6 +244,7 @@ func (config *KeyValConfig) Describe() string {
 func (config *KeyValConfig) Marshal(depth int) string {
 	var description bytes.Buffer
 	var started bool
+	started = false
 	shift := strings.Repeat("  ", depth)
 	description.WriteString("{\n")
 
@@ -211,40 +260,42 @@ func (config *KeyValConfig) Marshal(depth int) string {
 		started = true
 	}
 
-	if config.MinimalSet != nil {
-		if started {
-			description.WriteString(", ")
-		} else {
-			description.WriteString("  ")
-		}
-		description.WriteString(shift)
-		description.WriteString(", MinimalSet: {\n")
-		for k, v := range config.MinimalSet {
+	/*
+		if config.MinimalSet != nil {
+			if started {
+				description.WriteString(", ")
+			} else {
+				description.WriteString("  ")
+			}
 			description.WriteString(shift)
-			description.WriteString(fmt.Sprintf("  , %s: %s\n", k, v))
+			description.WriteString(", MinimalSet: {\n")
+			for k, v := range config.MinimalSet {
+				description.WriteString(shift)
+				description.WriteString(fmt.Sprintf("  , %s: %s\n", k, v))
+			}
+			description.WriteString(shift)
+			description.WriteString("  }\n")
+			started = true
 		}
-		description.WriteString(shift)
-		description.WriteString("  }\n")
-		started = true
-	}
+	*/
 	if config.OtherKeynames != nil {
+		description.WriteString(shift)
 		if started {
 			description.WriteString(", ")
 		} else {
 			description.WriteString("  ")
 		}
-		description.WriteString(shift)
-		description.WriteString(fmt.Sprintf(", OtherKeynames: %s/n", config.OtherKeynames.Marshal(depth+1)))
+		description.WriteString(fmt.Sprintf("OtherKeynames: %s\n", config.OtherKeynames.Marshal(depth+1)))
 		started = true
 	}
 	if config.OtherVals != nil {
+		description.WriteString(shift)
 		if started {
 			description.WriteString(", ")
 		} else {
 			description.WriteString("  ")
 		}
-		description.WriteString(shift)
-		description.WriteString(fmt.Sprintf(", OtherVals: %s/n", config.OtherVals.Marshal(depth+1)))
+		description.WriteString(fmt.Sprintf("OtherVals: %s\n", config.OtherVals.Marshal(depth+1)))
 	}
 	description.WriteString(shift)
 	description.WriteString("}\n")

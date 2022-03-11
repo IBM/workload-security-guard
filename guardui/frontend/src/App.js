@@ -7,7 +7,9 @@ import React, { useState } from "react";
 import GetIcon from '@mui/icons-material/GetApp';
 import SendIcon from '@mui/icons-material/Send';
 import ClearIcon from '@mui/icons-material/Clear';
-
+import LearnIcon from '@mui/icons-material/LightbulbOutlined';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMoreRounded';
+import ExpandLessIcon from '@mui/icons-material/ExpandLessRounded';
 
 const testData = {}
 const testData1 = {
@@ -285,7 +287,7 @@ function App() {
     
   let ns = ""
   let sid = ""
-  let collapse
+  let collapse, expand
 
   function onGetClick() {
     setSuccess("")
@@ -339,15 +341,32 @@ function App() {
       collapse()
     }
   };
-
+  function onLearnedClick() {
+    setSuccess("")
+    setInfo("")
+    setError("")
+    var d =  {}
+    d.control = dataVal.control
+    d.configured = JSON.parse(JSON.stringify(dataVal.learned));
+    d.learned = dataVal.learned 
+    setData(d);
+    setInfo("Approved Learned Critiria to be used as Configured Critiria");
+    if (collapse) {
+      collapse()
+    }
+  };
   function onSetClick() {
     setSuccess("")
     setInfo("")
     setError("")
+    var d =  {}
+    d.control = dataVal.control
+    d.configured = dataVal.configured
+    console.log("onSetClick", d)
     const requestOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dataVal)
+      body: JSON.stringify(d)
     };
     let url = "guardian/"+ns+"/"+sid
     fetch(url, requestOptions)
@@ -388,6 +407,10 @@ function App() {
     console.log("setCollapse at APP")
     collapse = c
   }
+  function setExpand(e) {
+    console.log("setExpand at APP")
+    expand = e
+  }
 
 
   return (
@@ -416,12 +439,13 @@ function App() {
         <Box sx={{ display: "flex", justifyContent: "start", margin: "0.2em"}}>
             <Button sx={{ width: "12em"}} variant="outlined" endIcon={<GetIcon />} onClick={onGetClick}>Get</Button>
             <Button sx={{ width: "12em"}} variant="outlined" startIcon={<ClearIcon />} onClick={onClearClick}>Default</Button>
+            <Button sx={{ width: "12em"}} variant="outlined" startIcon={<LearnIcon />} onClick={onLearnedClick}>Learned</Button>
             <Button sx={{ width: "12em"}} variant="outlined" endIcon={<SendIcon />} onClick={onSetClick}>Set</Button>
         </Box>
         <Identity ns="" sid="" handleChange={handleIdentityChange} ></Identity>
         
         
-      <Guardian data={dataVal} setCollapse={setCollapse}>Guard</Guardian>
+      <Guardian data={dataVal} setCollapse={setCollapse} setExpand={setExpand}>Guard</Guardian>
       </form>
     </div>
     

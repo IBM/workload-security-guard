@@ -1,27 +1,26 @@
-import React from "react";
+import React, {useEffect} from "react";
 import TreeItem from '@mui/lab/TreeItem';
 import { U8MinmaxSlice } from './U8MinmaxSlice';
 import { SimpleVal } from './SimpleVal';
+import {Toggle} from './Guardian'
 
 
 function Url(props) {
   var { data, onDataChange, nodeId, name } = props;
   if (!data.val) data.val = {}
   if (!data.segments) data.segments = []
-  //let value = data
+
+  useEffect(() => {
+    Toggle([nodeId+">Segements", nodeId+">Val"])
+  }, [nodeId]);
+  
   function handleValChange(key, d) {
-    //if (d) {
-      //data.val = d
-      //console.log("handleValChange", data)  
-      onDataChange(data)
-    //}
+    onDataChange(data)
   };
   function handleSegmentsChange(d) {
-    //if (d) {
-      data.segments = d
-      console.log("handleSegmentsChange", data)  
-      onDataChange(data)
-    //}
+    data.segments = d
+    console.log("handleSegmentsChange", data)  
+    onDataChange(data)
   };
 
 return (

@@ -7,8 +7,6 @@ import (
 )
 
 type SimpleValConfig struct {
-	//FlagsL       uint32        `json:"flagsl"`
-	//FlagsH       uint32        `json:"flagsh"`
 	Flags        uint32        `json:"flags"`
 	Runes        U8MinmaxSlice `json:"runes"`
 	Digits       U8MinmaxSlice `json:"digits"`
@@ -17,10 +15,10 @@ type SimpleValConfig struct {
 	Words        U8MinmaxSlice `json:"words"`
 	Numbers      U8MinmaxSlice `json:"numbers"`
 	UnicodeFlags Uint32Slice   `json:"unicodeFlags"` //[]uint32
+	Mandatory    bool          `json:"mandatory"`
 }
 
 type SimpleValPile struct {
-	//Flags        uint64
 	Flags        uint32
 	Runes        []uint8
 	Digits       []uint8
@@ -32,7 +30,6 @@ type SimpleValPile struct {
 }
 
 type SimpleValProfile struct {
-	//Flags        uint64
 	Flags        uint32
 	Runes        uint8
 	Digits       uint8
@@ -209,7 +206,15 @@ func convert32To64(vL uint32, vH uint32) (v uint64) {
 	return
 }
 */
-//func (svp *SimpleValProfile) Decide(config *SimpleValConfig) string {
+func (config *SimpleValConfig) Normalize() {
+	config.Digits = append(config.Digits, U8Minmax{0, 0})
+	config.Runes = append(config.Runes, U8Minmax{0, 0})
+	config.Letters = append(config.Letters, U8Minmax{0, 0})
+	config.SpecialChars = append(config.SpecialChars, U8Minmax{0, 0})
+	config.Words = append(config.Words, U8Minmax{0, 0})
+	config.Numbers = append(config.Numbers, U8Minmax{0, 0})
+}
+
 func (config *SimpleValConfig) Decide(svp *SimpleValProfile) string {
 	//flagsL, flagsH := convert64To32(svp.Flags)
 	//flagsL = flagsL & ^config.FlagsL
@@ -426,6 +431,31 @@ func (svp *SimpleValProfile) Profile(str string) {
 
 }
 
+func (svp *SimpleValProfile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Flags: 0x%x,\n", svp.Flags))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  UnicodeFlags: %s,\n", svp.UnicodeFlags.Marshal()))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Runes: %d,\n", svp.Runes))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Letters: %d,\n", svp.Letters))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Digits: %d,\n", svp.Digits))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  SpecialChars: %d,\n", svp.SpecialChars))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Words: %d,\n", svp.Words))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Numbers: %d,\n", svp.Numbers))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
 func (svp *SimpleValProfile) Describe() string {
 	var description bytes.Buffer
 	description.WriteString("Flags: ")
@@ -496,6 +526,10 @@ func (config *SimpleValConfig) Marshal(depth int) string {
 	//description.WriteString(shift)
 	//description.WriteString(fmt.Sprintf("  FlagsH: 0x%x,\n", config.FlagsH))
 	//description.WriteString(shift)
+	if config.Mandatory {
+		description.WriteString("  Mandatory!\n")
+		description.WriteString(shift)
+	}
 	description.WriteString(fmt.Sprintf("  Flags: 0x%x,\n", config.Flags))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  UnicodeFlags: %s,\n", config.UnicodeFlags.Marshal()))

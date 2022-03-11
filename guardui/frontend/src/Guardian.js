@@ -1,22 +1,33 @@
-import React, {useState} from "react";
-import { Req } from './Req';
-import {TreeView, TreeItem} from '@mui/lab';
+import React, {useState, useEffect} from "react";
+import { Control } from './Control';
+import { Critiria } from './Critiria';
+import {TreeView} from '@mui/lab';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import {FormControlLabel, Select, MenuItem, FormGroup, Checkbox} from '@mui/material';
 
-import {Box} from '@mui/material';
-const autotips = {"disable": "Alert based on manual configuration", "alert": "Alert basd on automation", "learn": "Learning used for recomendations only"}
+let fullExpanded = {"Configured":true, "Control":true, "Learned":true}
+let Toggle = (nodeIds) => {
+  let n = {} 
+  for (let k in fullExpanded) {
+    n[k] = true
+  }
+  for (let i=0;i<nodeIds.length;i++) {
+    n[nodeIds[i]] = true
+  }
+  fullExpanded = n
+};
 
 function Guardian(props) {
   const { data, setCollapse } = props;
-  if (!data.auto) data.auto = "disable"
-  if (!data.forceAllow) data.forceAllow = false
-  if (!data.req) data.req = {}
-  
+  if (!data.configured) data.configured = {}
+  if (!data.learned) data.learned = {}
+  if (!data.control) data.control = {}
   const [expanded, setExpanded] = useState([]);
-  const [allowVal, setAllow] = useState(!data.forceAllow);
-  const [autoVal, setAuto] = useState(data.auto);
+  
+  //useEffect(() => {
+  //  console.log("Guardian Exanding", fullExpanded)
+  //  setExpanded(Object.keys(fullExpanded));
+  //}, [fullExpanded]);
 
   const handleToggle = (event, nodeIds) => {
     setExpanded(nodeIds);
@@ -27,22 +38,17 @@ function Guardian(props) {
   }
   setCollapse(collapse)
 
-  function handleReqChange(d) {
-    console.log("handleReqChange", d)
-  }
-  
-  function handleAllow(event) {
-      console.log("handleAllow event.target.checked",event.target.checked )
-      data.forceAllow = !allowVal
-      setAllow(!allowVal);
+  function handleConfiguredChange(d) {
+    console.log("handleConfiguredChange", data, d)
   }
 
-  function handleAutoSelect(event) {
-    console.log("handleAutoSelect",event.target.value )
-    data.auto = event.target.value
-    setAuto(event.target.value);
+  function handleLearnedChange(d) {
+    console.log("handleLearnedChange", data, d)
   }
 
+  function handleControldChange(d) {
+    console.log("handleConfiguredChange", data, d)
+  }
   console.log("Guardian data", data)
   if (Object.keys(data).length === 0) {
     return (
@@ -70,34 +76,13 @@ function Guardian(props) {
         alignItems: "center"
       }}
     > 
-    
-        <TreeItem nodeId="Constrols" label="Controls" sx={{ textAlign: "start"}}>
-          <FormGroup>
-            <Box sx={{ display:"flex",  justifyContent: "start", alignItems: "center"}}>
-            
-              <Select
-                labelId="selelct automation"
-                id="automation-select"
-                value={autoVal}
-                label="Automation"
-                onChange={handleAutoSelect}
-                sx={{ margin: "2em"}}
-              >
-                <MenuItem value={"disable"} title={autotips["disable"]}>Automation disabled</MenuItem>
-                <MenuItem value={"learn"} title={autotips["learn"]}>Learn only</MenuItem>
-                <MenuItem value={"alert"} title={autotips["alert"]}>Auto alert</MenuItem>
-              </Select>
-              {autotips[autoVal]} 
-              <FormControlLabel sx={{ margin: "2em"}} control={<Checkbox checked={!allowVal} onChange={handleAllow}/>} label="Block on Alert"/>
-            </Box>
-          </FormGroup>
-        </TreeItem>
-        <Req data={data.req} nodeId="Req" name="Request" onDataChange={handleReqChange}></Req>    
-         
+        <Control data={data.control}  nodeId="Control" name="Control" onDataChange={handleControldChange}></Control>    
+        <Critiria data={data.configured}  nodeId="Configured" name="Configured" onDataChange={handleConfiguredChange}></Critiria>    
+        <Critiria data={data.learned}  nodeId="Learned" name="Learned" onDataChange={handleLearnedChange}></Critiria>  
     </TreeView>
   );
 }
 
-export {Guardian};
+export {Guardian, Toggle};
 //  <div><pre>{JSON.stringify(data, null, 2) }</pre></div>
 //<Box sx={{ display:"flex",  justifyContent: "start"}}>

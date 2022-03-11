@@ -7,6 +7,14 @@ import (
 	"strings"
 )
 
+type RespPile struct {
+	Headers HeadersPile `json:"headers"`
+}
+
+type RespConfig struct {
+	Headers HeadersConfig `json:"headers"`
+}
+
 type ReqPile struct {
 	Url     UrlPile     `json:"url"`
 	Qs      QueryPile   `json:"qs"`
@@ -19,20 +27,43 @@ type ReqConfig struct {
 	Headers HeadersConfig `json:"headers"`
 }
 
+/*
+pi.Log.Debugf("Client: %s port %s", cip, cport)
+pi.Log.Debugf("Server: %s port %s", sip, sport)
+
+pi.Log.Debugf("req.Method %s", req.	)
+pi.Log.Debugf("req.Proto %s", req.Proto)
+pi.Log.Debugf("scheme: %s", req.URL.Scheme)
+pi.Log.Debugf("opaque: %s", req.URL.Opaque)
+
+pi.Log.Debugf("ContentLength: %d", req.ContentLength)
+pi.Log.Debugf("Trailer: %#v", req.Trailer)
+*/
 type ReqProfile struct {
-	Url     *UrlProfile
-	Qs      *QueryProfile
-	Headers *HeadersProfile
+	//ClientIP      string          `json:"cip"`           // 127.0.0.1
+	//ClientPort    string          `json:"cport"`         // 53592
+	Method        string          `json:"method"`        // GET
+	Proto         string          `json:"proto"`         // "HTTP/1.1"
+	ContentLength uint32          `json:"contentlength"` // 0
+	Url           *UrlProfile     `json:"url"`
+	Qs            *QueryProfile   `json:"qs"`
+	Headers       *HeadersProfile `json:"headers"`
+	// Trailers...
+}
+
+type RespProfile struct {
+	Headers *HeadersProfile `json:"headers"`
 }
 
 type UrlPile struct {
-	Val      *SimpleValPile
-	Segments []uint8
+	Val      *SimpleValPile `json:"val"`
+	Segments []uint8        `json:"segments"`
 }
 
 type UrlProfile struct {
-	Val      *SimpleValProfile
-	Segments uint8
+	Scheme   string            `json:"scheme"` // http
+	Val      *SimpleValProfile `json:"val"`
+	Segments uint8             `json:"segments"`
 }
 
 type UrlConfig struct {
@@ -41,11 +72,11 @@ type UrlConfig struct {
 }
 
 type QueryPile struct {
-	Kv *KeyValPile
+	Kv *KeyValPile `json:"kv"`
 }
 
 type QueryProfile struct {
-	Kv *KeyValProfile
+	Kv *KeyValProfile `json:"kv"`
 }
 
 type QueryConfig struct {
@@ -53,11 +84,11 @@ type QueryConfig struct {
 }
 
 type HeadersPile struct {
-	Kv *KeyValPile
+	Kv *KeyValPile `json:"kv"`
 }
 
 type HeadersProfile struct {
-	Kv *KeyValProfile
+	Kv *KeyValProfile `json:"kv"`
 }
 
 type HeadersConfig struct {
@@ -71,14 +102,43 @@ func (p *UrlPile) Add(u *UrlProfile) {
 
 func (u *UrlProfile) Profile(path string) {
 	segments := strings.Split(path, "/")
+	numSegments := len(segments)
+	if (numSegments > 0) && segments[0] == "" {
+		segments = segments[1:]
+		numSegments--
+	}
+	if (numSegments > 0) && segments[numSegments-1] == "" {
+		numSegments--
+		segments = segments[:numSegments]
+
+	}
 	cleanPath := strings.Join(segments, "")
 	u.Val = new(SimpleValProfile)
 	u.Val.Profile(cleanPath)
-	numSegments := len(segments)
+
 	if numSegments > 0xFF {
 		numSegments = 0xFF
 	}
 	u.Segments = uint8(numSegments)
+	fmt.Printf("Path %s, segments %v, len %d\n", path, segments, numSegments)
+}
+
+func (u *UrlProfile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Val: %s", u.Val.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Segments: %d", u.Segments))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
+func (config *UrlConfig) Normalize() {
+	config.Val.Normalize()
+	config.Segments = append(config.Segments, U8Minmax{0, 0})
 }
 
 func (config *UrlConfig) Decide(u *UrlProfile) string {
@@ -134,6 +194,20 @@ func (q *QueryProfile) Profile(m map[string][]string) {
 	q.Kv.Profile(m)
 }
 
+func (config *QueryConfig) Normalize() {
+	config.Kv.Normalize()
+}
+func (q *QueryProfile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Kv: %s", q.Kv.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
 func (config *QueryConfig) Decide(q *QueryProfile) string {
 	str := config.Kv.Decide(q.Kv)
 	if str == "" {
@@ -168,6 +242,21 @@ func (h *HeadersProfile) Profile(m map[string][]string) {
 	h.Kv.Profile(m)
 }
 
+func (h *HeadersProfile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Kv: %s", h.Kv.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
+func (config *HeadersConfig) Normalize() {
+	config.Kv.Normalize()
+}
+
 func (config *HeadersConfig) Decide(h *HeadersProfile) string {
 	str := config.Kv.Decide(h.Kv)
 	if str == "" {
@@ -195,6 +284,27 @@ func (config *HeadersConfig) AddTypicalVal() {
 	config.Kv.OtherVals.Flags = 1<<MinusSlot | 1<<AsteriskSlot | 1<<SlashSlot | 1<<CommentsSlot | 1<<PeriodSlot
 }
 
+func (p *RespPile) Add(rp *ReqProfile) {
+	p.Headers.Add(rp.Headers)
+
+}
+
+func (rp *RespProfile) Profile(req *http.Request) {
+	rp.Headers = new(HeadersProfile)
+	rp.Headers.Profile(req.Header)
+}
+
+func (rp *RespProfile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Headers: %s", rp.Headers.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
 func (p *ReqPile) Add(rp *ReqProfile) {
 	p.Url.Add(rp.Url)
 	p.Qs.Add(rp.Qs)
@@ -209,6 +319,39 @@ func (rp *ReqProfile) Profile(req *http.Request) {
 	rp.Qs.Profile(req.URL.Query())
 	rp.Headers = new(HeadersProfile)
 	rp.Headers.Profile(req.Header)
+}
+
+func (rp *ReqProfile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Url: %s", rp.Url.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Qs: %s", rp.Qs.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Headers: %s", rp.Headers.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
+func (config *RespConfig) Normalize() {
+	config.Headers.Normalize()
+}
+
+func (config *ReqConfig) Normalize() {
+	config.Qs.Normalize()
+	config.Headers.Normalize()
+	config.Url.Normalize()
+}
+
+func (config *RespConfig) Decide(rp *ReqProfile) string {
+	ret := config.Headers.Decide(rp.Headers)
+	if ret == "" {
+		return ret
+	}
+	return fmt.Sprintf("HttpResponse: %s", ret)
 }
 
 func (config *ReqConfig) Decide(rp *ReqProfile) string {
@@ -226,6 +369,17 @@ func (config *ReqConfig) Decide(rp *ReqProfile) string {
 	return fmt.Sprintf("HttpRequest: %s", ret)
 }
 
+func (config *RespConfig) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Headers: %s", config.Headers.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
 func (config *ReqConfig) Marshal(depth int) string {
 	var description bytes.Buffer
 	shift := strings.Repeat("  ", depth)
@@ -239,6 +393,11 @@ func (config *ReqConfig) Marshal(depth int) string {
 	description.WriteString(shift)
 	description.WriteString("}\n")
 	return description.String()
+}
+
+// Allow typical values - use for development but not in production
+func (config *RespConfig) AddTypicalVal() {
+	config.Headers.AddTypicalVal()
 }
 
 // Allow typical values - use for development but not in production

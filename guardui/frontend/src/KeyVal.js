@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import React, {useState, useEffect} from "react";
 import TreeItem from '@mui/lab/TreeItem';
 import { SimpleVal } from "./SimpleVal";
 import {SelectKeyDialog} from "./SelectKeyDialog";
@@ -7,6 +7,7 @@ import {CheckedKeySlice} from "./CheckedKeySlice";
 import {IconButton, Divider} from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import RemoveRoundedIcon from '@mui/icons-material/RemoveRounded';
+import {Toggle} from './Guardian'
 
 function KeyVal(props) {
   var { data, onDataChange, nodeId, name } = props;
@@ -14,21 +15,22 @@ function KeyVal(props) {
   if (!data["vals"]) data["vals"] = {}
   if (!data["otherVals"]) data["otherVals"] = {}
   if (!data["otherKeynames"]) data["otherKeynames"] = {}
-  if (!data["minimalSet"]) data["minimalSet"] = []
+  //if (!data["minimalSet"]) data["minimalSet"] = []
 
-  //let value = data
+  useEffect(() => {
+    //Toggle([nodeId+">minimalSet", nodeId+">OtherVals", nodeId+">OtherKeynames"])
+    Toggle([nodeId+">OtherVals", nodeId+">OtherKeynames"])
+  }, [nodeId]);
+  
   console.log("keyval data", data)
   let minSet = {}
-  for (var key in data.vals) {  
-    minSet[key] = data.minimalSet.includes(key)
-  }
+  //for (var key in data.vals) {  
+  //  minSet[key] = data.minimalSet.includes(key)
+  //}
   const [version, setVersion] = useState(0);
   const [newkeyOpen, setNewkey] = useState(false);
   const [delkeyOpen, delKey] = useState(false);
-  const [minimalSet, setMinimalSet] = useState(minSet);
-  
-
- 
+  //const [minimalSet, setMinimalSet] = useState(minSet);
 
   function onValsChange(key, d) {
     //data.vals[key] = d 
@@ -45,14 +47,14 @@ function KeyVal(props) {
     //console.log("onOtherKeynamesChange", d, data)
     onDataChange(data)
   }
-  function onMinimalSetChange(key, d) {
-    data.minimalSet = []
-    for (var k in d) { 
-      if (d[k]) data.minimalSet.push(k)
-    }
-    console.log("onMinimalSetChange", d, data)
-    onDataChange(data)
-  }
+  //function onMinimalSetChange(key, d) {
+  //  data.minimalSet = []
+  //  for (var k in d) { 
+  //    if (d[k]) data.minimalSet.push(k)
+  //  }
+  //  console.log("onMinimalSetChange", d, data)
+  //  onDataChange(data)
+  //}
   function handleValDel() {
     delKey(true)
   }
@@ -76,25 +78,25 @@ function KeyVal(props) {
     }
     setNewkey(false)
     let minSet = {}
-    for (key in data.vals) {  
-      minSet[key] = data.minimalSet.includes(key)
-    }
+    //for (key in data.vals) {  
+    //  minSet[key] = data.minimalSet.includes(key)
+    //}
     console.log("onNewKey  minSet", minSet)
     onDataChange(data)
-    setMinimalSet(minSet)
+    //setMinimalSet(minSet)
     setVersion(version+1)
     
     //setVersion(version+1);
   };
   
   let res = []
-  for (key in data.vals) {  
+  for (let key in data.vals) {  
     let v =  data.vals[key]
     res.push(
       <SimpleVal data={v} nodeId={nodeId+key} key={nodeId+key} keyId={key} name={key} onDataChange={onValsChange}/>
     )
   }
-  console.log("******* KEy Val Refresh ******", minimalSet)
+  //console.log("******* KEy Val Refresh ******", minimalSet)
   return (
       <TreeItem nodeId={nodeId} label={name}>
         <SelectKeyDialog open={delkeyOpen} name="Key to delete" data ={Object.keys(data.vals)} onClose={onSelectKey} ></SelectKeyDialog>
@@ -108,7 +110,6 @@ function KeyVal(props) {
                 <RemoveRoundedIcon />
             </IconButton>
         </Divider>
-        <CheckedKeySlice data={minimalSet} nodeId={nodeId+">minimalSet"} keyId="minimalSet" name="Minimal Set" onDataChange={onMinimalSetChange} />
         <SimpleVal data={data.otherVals} nodeId={nodeId+">OtherVals"} keyId="otherVals" name="Other Vals" onDataChange={onOtherValsChange}></SimpleVal>
         <SimpleVal data={data.otherKeynames} nodeId={nodeId+">OtherKeynames"} keyId="otherKeynames" name="Other Keynames" onDataChange={onOtherKeynamesChange}></SimpleVal>
       </TreeItem>
@@ -120,3 +121,5 @@ export {KeyVal};
 // </div><Box sx={{ display: "flex", justifyContent: "start", margin: "0.2em"}}>
 // <Button sx={{ width: "12em", alignItems: "center", fontSize: "0.8em"}} onClick={handleChange} variant="contained">{name}</Button>
 // </Box><Box sx={{ display: showVal ? "flex" : "none", flexDirection:  "column", justifyContent: "start"}}>
+//<CheckedKeySlice data={minimalSet} nodeId={nodeId+">minimalSet"} keyId="minimalSet" name="Minimal Set" onDataChange={onMinimalSetChange} />
+        

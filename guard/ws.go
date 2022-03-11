@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 	"k8s.io/client-go/tools/clientcmd"
@@ -25,6 +24,7 @@ func processPile(w http.ResponseWriter, req *http.Request) {
 	// Add security to ensure that only gate can use this interface!
 	// Check that the source is from the local 10.*.*.* range
 	// Check that the
+	var pile spec.ReqPile
 	query := req.URL.Query()
 	sidSlice := query["sid"]
 	nsSlice := query["ns"]
@@ -37,9 +37,16 @@ func processPile(w http.ResponseWriter, req *http.Request) {
 	ns := nsSlice[0]
 	if sid == "" || ns == "" {
 		fmt.Printf("Servicing processPile missing data\n")
+		http.Error(w, "Missing data", http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("Servicing processPile of service id %s:%s\n", ns, sid)
+
+	err := json.NewDecoder(req.Body).Decode(&pile)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	fmt.Printf("Servicing processPile of service id %s:%s %v\n", ns, sid, pile)
 	data := ""
 	w.Write([]byte(data))
 }
@@ -93,10 +100,10 @@ func _setCrd() {
 		panic(err.Error())
 	}
 	data := new(spec.WsGate)
-	data.ConsultGuard.Active = true
-	data.ConsultGuard.RequestsPerMinuete = 60
+	data.Control.Consult = true
+	data.Control.RequestsPerMinuete = 60
 	//data.ForceAllow = true
-	data.Req.AddTypicalVal()
+	data.Contigured.Req.AddTypicalVal()
 
 	json, err := json.Marshal(data)
 	if err != nil {
@@ -141,7 +148,7 @@ func setCrd(sid string, wsGate *spec.WsGate) {
 		fmt.Printf("guardian %v\n", g)
 		g.Name = sid
 		g.Spec = (*spec.GuardianSpec)(wsGate)
-		g, err = gClient.Guardians("default").Update(context.TODO(), g, v1.UpdateOptions{})
+		g, err = gClient.Guardians("default").Update(context.TODO(), g, metav1.UpdateOptions{})
 		if err != nil {
 			fmt.Printf("update err %v\n", err)
 		}
@@ -149,7 +156,7 @@ func setCrd(sid string, wsGate *spec.WsGate) {
 		fmt.Printf("get err %v\n", err)
 		g.Name = sid
 		g.Spec = (*spec.GuardianSpec)(wsGate)
-		g, err = gClient.Guardians("default").Create(context.TODO(), g, v1.CreateOptions{})
+		g, err = gClient.Guardians("default").Create(context.TODO(), g, metav1.CreateOptions{})
 		if err != nil {
 			fmt.Printf("update err %v\n", err)
 		}
@@ -158,10 +165,10 @@ func setCrd(sid string, wsGate *spec.WsGate) {
 
 func setConfigMap() {
 	data := new(spec.WsGate)
-	data.ConsultGuard.Active = true
-	data.ConsultGuard.RequestsPerMinuete = 60
+	data.Control.Consult = true
+	data.Control.RequestsPerMinuete = 60
 	//data.ForceAllow = true
-	data.Req.AddTypicalVal()
+	data.Contigured.Req.AddTypicalVal()
 
 	databuf, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -181,7 +188,7 @@ func setConfigMap() {
 	}
 
 	fmt.Printf("MarshalIdent\n %s\n", string(databuf))
-	fmt.Printf("My Marshal\n %s\n", data.Req.Marshal(4))
+	fmt.Printf("My Marshal\n %s\n", data.Contigured.Req.Marshal(4))
 
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
@@ -240,10 +247,10 @@ func fetchConfig(w http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Printf("Servicing fetchConfig of service id %s\n", sid)
 	data := new(spec.WsGate)
-	data.ConsultGuard.Active = true
-	data.ConsultGuard.RequestsPerMinuete = 60
-	data.ForceAllow = true
-	data.Req.AddTypicalVal()
+	data.Control.Consult = true
+	data.Control.RequestsPerMinuete = 60
+	data.Control.Block = false
+	data.Contigured.Req.AddTypicalVal()
 	//data.Req.Url.Val.AddValExample("/")
 	//fmt.Println("Url ", data.Req.Url.Val.Describe())
 	//data.Req.Qs.Kv.WhitelistKnownKeys(map[string]string{"a": "4", "b": ""})
@@ -262,10 +269,10 @@ func fetchConfig(w http.ResponseWriter, req *http.Request) {
 func main() {
 	//setConfigMap()
 	data := new(spec.WsGate)
-	data.ConsultGuard.Active = true
-	data.ConsultGuard.RequestsPerMinuete = 60
-	data.ForceAllow = true
-	data.Req.AddTypicalVal()
+	data.Control.Consult = true
+	data.Control.RequestsPerMinuete = 60
+	data.Control.Block = false
+	data.Contigured.Req.AddTypicalVal()
 	setCrd("myservice.mynamepsace", data)
 	fmt.Printf("Starting server on port 8888\n")
 	http.HandleFunc("/config", fetchConfig)

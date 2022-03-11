@@ -85,6 +85,7 @@ func ReadUserIP(req *http.Request) string {
 }
 
 func (p *plug) screenRequest(req *http.Request) error {
+	p.fetchConfig()
 	// Request client and server identities
 	cip, cport, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
@@ -95,46 +96,56 @@ func (p *plug) screenRequest(req *http.Request) error {
 	if err != nil {
 		return fmt.Errorf("illegal req.URL.Host %s", err.Error())
 	}
-	pi.Log.Infof("Client: %s port %s", cip, cport)
-	pi.Log.Infof("Server: %s port %s", sip, sport)
+	pi.Log.Debugf("Client: %s port %s", cip, cport)
+	pi.Log.Debugf("Server: %s port %s", sip, sport)
 
 	// Request principles
-	pi.Log.Infof("req.Method %s", req.Method)
-	pi.Log.Infof("req.Proto %s", req.Proto)
-	pi.Log.Infof("scheme: %s", req.URL.Scheme)
-	pi.Log.Infof("opaque: %s", req.URL.Opaque)
+	pi.Log.Debugf("req.Method %s", req.Method)
+	pi.Log.Debugf("req.Proto %s", req.Proto)
+	pi.Log.Debugf("scheme: %s", req.URL.Scheme)
+	pi.Log.Debugf("opaque: %s", req.URL.Opaque)
 
-	pi.Log.Infof("ContentLength: %d", req.ContentLength)
-	pi.Log.Infof("Trailer: %#v", req.Trailer)
+	pi.Log.Debugf("ContentLength: %d", req.ContentLength)
+	pi.Log.Debugf("Trailer: %#v", req.Trailer)
 
 	// TBD req.Form
 
 	rp := new(spec.ReqProfile)
 	rp.Profile(req)
-	decission := p.wsGate.Req.Decide(rp)
+	fmt.Println(rp.Marshal(0))
+
+	ctrl := p.wsGate.Control
+	var decission string
+	if ctrl.Auto {
+		decission = p.wsGate.Learned.Req.Decide(rp)
+	} else {
+		decission = p.wsGate.Contigured.Req.Decide(rp)
+	}
 	if decission != "" {
 		// potentially consult guard before rejecting
 		pi.Log.Infof("Guardian refused to allow: %s", decission)
-		if p.wsGate.ConsultGuard.Active {
+		if ctrl.Consult {
 			minuete := time.Now().Truncate(time.Minute)
 			if p.lastConsultReported != minuete {
 				p.lastConsultReported = minuete
 				p.numConsultsCount = 0
 			}
-			if p.numConsultsCount < p.wsGate.ConsultGuard.RequestsPerMinuete {
+			if p.numConsultsCount < ctrl.RequestsPerMinuete {
 				p.numConsultsCount = p.numConsultsCount + 1
-				pi.Log.Infof("Consulting Guard %d/%d", p.numConsultsCount, p.wsGate.ConsultGuard.RequestsPerMinuete)
+				pi.Log.Infof("Consulting Guard %d/%d", p.numConsultsCount, ctrl.RequestsPerMinuete)
 				decission = p.consultOnRequest(rp)
 				//pi.Log.Infof("Guard said: %s", decission)
 			}
 		}
 	}
 	if decission == "" {
-		p.reportAllow(rp)
+		if ctrl.Learn {
+			p.reportAllow(rp)
+		}
 	} else {
-		pi.Log.Infof("Decission: %s", decission)
+		pi.Log.Infof("Alert: %s", decission)
 		p.reportBlock(rp, decission)
-		if !p.wsGate.ForceAllow {
+		if !p.wsGate.Control.Block {
 			return errors.New(decission)
 		}
 	}
@@ -272,8 +283,6 @@ func (p *plug) screenRequest(req *http.Request) error {
 
 		console.log(unit, dataout);
 		postRequest("Path: "+fingerprint_path, "/eval", dataout, callback)
-
-
 	*/
 
 	return nil
@@ -298,7 +307,6 @@ func responseFilter(buf []byte) error {
 			h[3]++
 		default: // anything else: !#$%&()*+,-./:<=>?@[\]^_{|}~
 			h[7]++
-
 		}
 	}
 	fmt.Printf("responseFilter Histogram: %v\n", h)
@@ -332,7 +340,7 @@ func requestFilter(buf []byte) error {
 func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 	testBodyHist := true
 
-	pi.Log.Infof("%s: ApproveRequest started", p.name)
+	pi.Log.Debugf("%s: ApproveRequest started", p.name)
 
 	if req.Header.Get("X-Block-Req") != "" {
 		pi.Log.Infof("%s ........... Blocked During Request! returning an error!", p.name)
@@ -342,7 +350,7 @@ func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 	for name, values := range req.Header {
 		// Loop over all values for the name.
 		for _, value := range values {
-			pi.Log.Infof("%s Request Header: %s: %s", p.name, name, value)
+			pi.Log.Debugf("%s Request Header: %s: %s", p.name, name, value)
 		}
 	}
 

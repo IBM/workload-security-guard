@@ -4,5 +4,8 @@ metadata:
   name: myserver
   namespace: default
 spec:
-  consult:
-    rpm: 30
+  control:
+    consolt: false
+    block: false
+    learn: false
+    auto: false

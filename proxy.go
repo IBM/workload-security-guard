@@ -39,6 +39,7 @@ func main() {
 	// Sleep some, such theb  gaurd can start before you
 	time.Sleep(3 * time.Second)
 	logger, _ := zap.NewDevelopment()
+	//logger, _ := zap.NewProduction()
 	defer logger.Sync() // flushes buffer, if any
 	log := logger.Sugar()
 

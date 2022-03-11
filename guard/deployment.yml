@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: ws
-        image: ko://github.com/IBM/go-security-plugs/guard
+        image: ko://github.com/IBM/workload-security-guard/guard
         imagePullPolicy: Always
         ports:
         - containerPort: 8888

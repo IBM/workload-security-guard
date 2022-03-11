@@ -1,8 +1,9 @@
-import React from "react";
+import React, {useEffect} from "react";
 import { U8MinmaxSlice } from './U8MinmaxSlice';
 import { FlagsSlice } from './FlagsSlice';
 import { UnicodeSlice } from './UnicodeSlice';
-//import {Box, Button} from '@mui/material';
+import {Toggle} from './Guardian'
+
 
 import TreeItem from '@mui/lab/TreeItem';
 
@@ -18,6 +19,11 @@ function SimpleVal(props) {
   if (!data.words) data.words = []
   if (!data.flags) data.flags = 0
   if (!data.unicodeFlags) data.unicodeFlags = []
+
+  useEffect(() => {
+    Toggle([nodeId+">Digits", nodeId+">Letters", nodeId+">Runes", nodeId+">Special Chars", 
+            nodeId+">Numbers", nodeId+">Words", nodeId+">Flags", nodeId+">Unicodes"])
+  }, [nodeId]);
 
   function onDigitsChange(d) {
     data.digits = d 
