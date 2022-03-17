@@ -8,8 +8,6 @@ import GetIcon from '@mui/icons-material/GetApp';
 import SendIcon from '@mui/icons-material/Send';
 import ClearIcon from '@mui/icons-material/Clear';
 import LearnIcon from '@mui/icons-material/LightbulbOutlined';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMoreRounded';
-import ExpandLessIcon from '@mui/icons-material/ExpandLessRounded';
 
 const testData = {}
 const testData1 = {

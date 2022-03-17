@@ -35,6 +35,11 @@ import (
 const version string = "0.0.1"
 const name string = "wsgate"
 
+//type StateReq time.Time
+//type StateResp time.Time
+
+type ctxKey string
+
 type plug struct {
 	name    string
 	version string
@@ -111,15 +116,15 @@ func (p *plug) screenRequest(req *http.Request) error {
 	// TBD req.Form
 
 	rp := new(spec.ReqProfile)
-	rp.Profile(req)
+	rp.Profile(req, cip)
 	fmt.Println(rp.Marshal(0))
-
+	fmt.Println(p.wsGate.Configured)
 	ctrl := p.wsGate.Control
 	var decission string
 	if ctrl.Auto {
 		decission = p.wsGate.Learned.Req.Decide(rp)
 	} else {
-		decission = p.wsGate.Contigured.Req.Decide(rp)
+		decission = p.wsGate.Configured.Req.Decide(rp)
 	}
 	if decission != "" {
 		// potentially consult guard before rejecting
@@ -143,7 +148,7 @@ func (p *plug) screenRequest(req *http.Request) error {
 			p.reportAllow(rp)
 		}
 	} else {
-		pi.Log.Infof("Alert: %s", decission)
+		pi.Log.Infof("Alert HttpRequest: %s", decission)
 		p.reportBlock(rp, decission)
 		if !p.wsGate.Control.Block {
 			return errors.New(decission)
@@ -337,6 +342,18 @@ func requestFilter(buf []byte) error {
 	return nil
 }
 
+func (p *plug) periodical(ctx context.Context) {
+	pp := new(spec.ProcessProfile)
+
+	now := time.Now()
+	reqTime, okReqTime := ctx.Value(ctxKey("ReqTime")).(time.Time)
+	if !okReqTime {
+		reqTime = now
+	}
+	pp.Profile(reqTime, reqTime, now)
+	fmt.Println(pp.Marshal(0))
+}
+
 func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 	testBodyHist := true
 
@@ -359,6 +376,8 @@ func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 	}
 
 	newCtx, cancelFunction := context.WithCancel(req.Context())
+
+	newCtx = context.WithValue(newCtx, ctxKey("ReqTime"), time.Now())
 	req = req.WithContext(newCtx)
 
 	timeoutStr := req.Header.Get("X-Block-Async")
@@ -377,13 +396,23 @@ func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 	}
 
 	pi.Log.Infof("%s ........... will asynchroniously block after %s", p.name, timeoutStr)
+	p.periodical(newCtx)
 	go func(newCtx context.Context, cancelFunction context.CancelFunc, req *http.Request, timeout time.Duration) {
-		select {
-		case <-newCtx.Done():
-			pi.Log.Infof("Done! %v", newCtx.Err())
-		case <-time.After(timeout):
-			pi.Log.Infof("Timeout!")
-			cancelFunction()
+		ticker := time.NewTicker(5 * time.Second)
+		for {
+			select {
+			case <-newCtx.Done():
+				ticker.Stop()
+				pi.Log.Infof("Done! %v", newCtx.Err())
+				return
+			case <-time.After(timeout):
+				pi.Log.Infof("Timeout!")
+				ticker.Stop()
+				cancelFunction()
+				return
+			case <-ticker.C:
+				p.periodical(newCtx)
+			}
 		}
 	}(newCtx, cancelFunction, req, timeout)
 
@@ -394,6 +423,17 @@ func (p *plug) ApproveResponse(req *http.Request, resp *http.Response) (*http.Re
 	testBodyHist := true
 
 	pi.Log.Infof("%s: ApproveResponse started", p.name)
+
+	pp := new(spec.ProcessProfile)
+
+	now := time.Now()
+	ctx := req.Context()
+	reqTime, okReqTime := ctx.Value(ctxKey("ReqTime")).(time.Time)
+	if !okReqTime {
+		reqTime = now
+	}
+	pp.Profile(reqTime, now, now)
+	fmt.Println(pp.Marshal(0))
 
 	if req.Header.Get("X-Block-Resp") != "" {
 		pi.Log.Infof("%s ........... Blocked During Response! returning an error!", p.name)
@@ -572,8 +612,7 @@ func (p *plug) readCrd(namespace string, serviceId string) *spec.GuardianSpec {
 	return g.Spec
 }
 
-/*
-func (p *plug) readConfigMap() {
+/*func (p *plug) readConfigMap() {
 	cm, err := p.kClient.Get(context.TODO(), "guardian", metav1.GetOptions{})
 	if err != nil {
 		fmt.Printf("ConfigMap Error: %v\n", err)
@@ -596,12 +635,20 @@ func (p *plug) fetchConfig() {
 		gurdianSpec = p.readCrd("knative-serving", "guardian")
 	}
 	if gurdianSpec == nil {
+		fmt.Println("Guardian was not set!")
 		gurdianSpec = new(spec.GuardianSpec)
 		// default gurdianSpec has:
 		// 		gurdianSpec.falseAllow=false
 		// 		gurdianSpec.ConsultGuard.Active = false
 	}
+	if gurdianSpec.Configured == nil {
+		gurdianSpec.Configured = new(spec.Critiria)
+	}
+	if gurdianSpec.Learned == nil {
+		gurdianSpec.Learned = new(spec.Critiria)
+	}
 	p.wsGate = (*spec.WsGate)(gurdianSpec)
+	fmt.Printf("p.wsGate %v", p.wsGate)
 
 	/*
 		req, err := http.NewRequest(http.MethodGet, p.guardUrl+"/config", nil)

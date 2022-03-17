@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 )
@@ -103,7 +104,8 @@ func _setCrd() {
 	data.Control.Consult = true
 	data.Control.RequestsPerMinuete = 60
 	//data.ForceAllow = true
-	data.Contigured.Req.AddTypicalVal()
+	data.Configured = new(spec.Critiria)
+	data.Configured.Req.AddTypicalVal()
 
 	json, err := json.Marshal(data)
 	if err != nil {
@@ -121,17 +123,22 @@ func _setCrd() {
 
 func setCrd(sid string, wsGate *spec.WsGate) {
 	var kubeconfig *string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	}
-	flag.Parse()
-
-	// use the current context in kubeconfig
-	cfg, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	var cfg *rest.Config
+	var err error
+	cfg, err = rest.InClusterConfig()
 	if err != nil {
-		panic(err.Error())
+		if home := homedir.HomeDir(); home != "" {
+			kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+		} else {
+			kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+		}
+		flag.Parse()
+
+		// use the current context in kubeconfig
+		cfg, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 
 	guardianClient, err := guardianclientset.NewForConfig(cfg)
@@ -168,7 +175,8 @@ func setConfigMap() {
 	data.Control.Consult = true
 	data.Control.RequestsPerMinuete = 60
 	//data.ForceAllow = true
-	data.Contigured.Req.AddTypicalVal()
+	data.Configured = new(spec.Critiria)
+	data.Configured.Req.AddTypicalVal()
 
 	databuf, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -188,7 +196,7 @@ func setConfigMap() {
 	}
 
 	fmt.Printf("MarshalIdent\n %s\n", string(databuf))
-	fmt.Printf("My Marshal\n %s\n", data.Contigured.Req.Marshal(4))
+	fmt.Printf("My Marshal\n %s\n", data.Configured.Req.Marshal(4))
 
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
@@ -250,7 +258,8 @@ func fetchConfig(w http.ResponseWriter, req *http.Request) {
 	data.Control.Consult = true
 	data.Control.RequestsPerMinuete = 60
 	data.Control.Block = false
-	data.Contigured.Req.AddTypicalVal()
+	data.Configured = new(spec.Critiria)
+	data.Configured.Req.AddTypicalVal()
 	//data.Req.Url.Val.AddValExample("/")
 	//fmt.Println("Url ", data.Req.Url.Val.Describe())
 	//data.Req.Qs.Kv.WhitelistKnownKeys(map[string]string{"a": "4", "b": ""})
@@ -272,7 +281,8 @@ func main() {
 	data.Control.Consult = true
 	data.Control.RequestsPerMinuete = 60
 	data.Control.Block = false
-	data.Contigured.Req.AddTypicalVal()
+	data.Configured = new(spec.Critiria)
+	data.Configured.Req.AddTypicalVal()
 	setCrd("myservice.mynamepsace", data)
 	fmt.Printf("Starting server on port 8888\n")
 	http.HandleFunc("/config", fetchConfig)

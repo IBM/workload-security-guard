@@ -125,10 +125,10 @@ func setGuadian(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Received: %s\n", str)
 
 	var g spec.GuardianSpec
-	if g.Contigured == nil {
-		g.Contigured = new(spec.Critiria)
+	if g.Configured == nil {
+		g.Configured = new(spec.Critiria)
 	}
-	g.Contigured.Normalize()
+	g.Configured.Normalize()
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	err := json.Unmarshal([]byte(str), &g)

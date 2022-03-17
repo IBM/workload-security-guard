@@ -31,7 +31,7 @@ type Critiria struct {
 }
 
 type WsGate struct {
-	Contigured *Critiria `json:"configured"`        // configrued critiria
+	Configured *Critiria `json:"configured"`        // configrued critiria
 	Learned    *Critiria `json:"learned,omitempty"` // Learned citiria
 	Control    Ctrl      `json:"control"`           // Control
 }
@@ -41,8 +41,8 @@ func (g *WsGate) Marshal(depth int) string {
 	shift := strings.Repeat("  ", depth)
 	description.WriteString("{\n")
 	description.WriteString(shift)
-	if g.Contigured != nil {
-		description.WriteString(fmt.Sprintf("  Configrued: %s", g.Contigured.Marshal(depth+1)))
+	if g.Configured != nil {
+		description.WriteString(fmt.Sprintf("  Configrued: %s", g.Configured.Marshal(depth+1)))
 		description.WriteString(shift)
 	}
 	if g.Learned != nil {

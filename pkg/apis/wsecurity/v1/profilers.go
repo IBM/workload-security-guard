@@ -10,8 +10,19 @@ type U8Minmax struct {
 	Max uint8 `json:"max"`
 }
 
+type Set map[string]bool
 type U8MinmaxSlice []U8Minmax
 type Uint32Slice []uint32
+
+func (configSet Set) Decide(proileSet Set) string {
+	for k := range proileSet {
+		_, exists := configSet[k]
+		if !exists {
+			return fmt.Sprintf("Unexpected key %s in Set", k)
+		}
+	}
+	return ""
+}
 
 func (base Uint32Slice) Add(val Uint32Slice) Uint32Slice {
 	if missing := len(val) - len(base); missing > 0 {

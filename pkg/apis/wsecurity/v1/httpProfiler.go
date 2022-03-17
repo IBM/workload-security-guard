@@ -3,6 +3,7 @@ package v1
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 )
@@ -16,43 +17,40 @@ type RespConfig struct {
 }
 
 type ReqPile struct {
+	ClientIp      []string `json:"cip"`           // 127.0.0.1
+	Method        []string `json:"method"`        // GET
+	Proto         []string `json:"proto"`         // "HTTP/1.1"
+	ContentLength []uint8  `json:"contentlength"` // 0
+
 	Url     UrlPile     `json:"url"`
 	Qs      QueryPile   `json:"qs"`
 	Headers HeadersPile `json:"headers"`
 }
 
 type ReqConfig struct {
+	ClientIp      Set           `json:"cip"`           // 127.0.0.1
+	Method        Set           `json:"method"`        // GET
+	Proto         Set           `json:"proto"`         // "HTTP/1.1"
+	ContentLength U8MinmaxSlice `json:"contentlength"` // 0
+
 	Url     UrlConfig     `json:"url"`
 	Qs      QueryConfig   `json:"qs"`
 	Headers HeadersConfig `json:"headers"`
 }
 
-/*
-pi.Log.Debugf("Client: %s port %s", cip, cport)
-pi.Log.Debugf("Server: %s port %s", sip, sport)
-
-pi.Log.Debugf("req.Method %s", req.	)
-pi.Log.Debugf("req.Proto %s", req.Proto)
-pi.Log.Debugf("scheme: %s", req.URL.Scheme)
-pi.Log.Debugf("opaque: %s", req.URL.Opaque)
-
-pi.Log.Debugf("ContentLength: %d", req.ContentLength)
-pi.Log.Debugf("Trailer: %#v", req.Trailer)
-*/
 type ReqProfile struct {
-	//ClientIP      string          `json:"cip"`           // 127.0.0.1
-	//ClientPort    string          `json:"cport"`         // 53592
+	ClientIp      string          `json:"cip"`           // 127.0.0.1
 	Method        string          `json:"method"`        // GET
 	Proto         string          `json:"proto"`         // "HTTP/1.1"
-	ContentLength uint32          `json:"contentlength"` // 0
+	ContentLength uint8           `json:"contentlength"` // 0
 	Url           *UrlProfile     `json:"url"`
 	Qs            *QueryProfile   `json:"qs"`
 	Headers       *HeadersProfile `json:"headers"`
-	// Trailers...
 }
 
 type RespProfile struct {
 	Headers *HeadersProfile `json:"headers"`
+	// Trailers...
 }
 
 type UrlPile struct {
@@ -143,11 +141,11 @@ func (config *UrlConfig) Normalize() {
 
 func (config *UrlConfig) Decide(u *UrlProfile) string {
 	if str := config.Segments.Decide(u.Segments); str != "" {
-		return fmt.Sprintf("URL Segmengs: %s", str)
+		return fmt.Sprintf("Segmengs: %s", str)
 	}
 
 	if str := config.Val.Decide(u.Val); str != "" {
-		return fmt.Sprintf("URL: %s", str)
+		return fmt.Sprintf("KeyVal: %s", str)
 	}
 	return ""
 }
@@ -157,7 +155,7 @@ func (config *UrlConfig) Marshal(depth int) string {
 	shift := strings.Repeat("  ", depth)
 	description.WriteString("{\n")
 	description.WriteString(shift)
-	description.WriteString(fmt.Sprintf("  Val: %s", config.Val.Marshal(depth+1)))
+	description.WriteString(fmt.Sprintf("  KeyVal: %s", config.Val.Marshal(depth+1)))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Segments: %s", config.Segments.Marshal()))
 	description.WriteString(shift)
@@ -213,7 +211,7 @@ func (config *QueryConfig) Decide(q *QueryProfile) string {
 	if str == "" {
 		return str
 	}
-	return fmt.Sprintf("QueryString: %s", str)
+	return fmt.Sprintf("KeyVal: %s", str)
 }
 
 // Allow typical query string values - use for development but not in production
@@ -262,7 +260,7 @@ func (config *HeadersConfig) Decide(h *HeadersProfile) string {
 	if str == "" {
 		return str
 	}
-	return fmt.Sprintf("HttpHeaders: %s", str)
+	return fmt.Sprintf("KeyVal: %s", str)
 }
 
 func (config *HeadersConfig) Marshal(depth int) string {
@@ -270,7 +268,7 @@ func (config *HeadersConfig) Marshal(depth int) string {
 	shift := strings.Repeat("  ", depth)
 	description.WriteString("{\n")
 	description.WriteString(shift)
-	description.WriteString(fmt.Sprintf("  Kv: %s", config.Kv.Marshal(depth+1)))
+	description.WriteString(fmt.Sprintf("  KeyVal: %s", config.Kv.Marshal(depth+1)))
 	description.WriteString(shift)
 	description.WriteString("}\n")
 	return description.String()
@@ -284,7 +282,7 @@ func (config *HeadersConfig) AddTypicalVal() {
 	config.Kv.OtherVals.Flags = 1<<MinusSlot | 1<<AsteriskSlot | 1<<SlashSlot | 1<<CommentsSlot | 1<<PeriodSlot
 }
 
-func (p *RespPile) Add(rp *ReqProfile) {
+func (p *RespPile) Add(rp *RespProfile) {
 	p.Headers.Add(rp.Headers)
 
 }
@@ -306,13 +304,27 @@ func (rp *RespProfile) Marshal(depth int) string {
 }
 
 func (p *ReqPile) Add(rp *ReqProfile) {
+	p.ClientIp = append(p.ClientIp, rp.ClientIp)
+	p.Method = append(p.Method, rp.Method)
+	p.Proto = append(p.Proto, rp.Proto)
+	p.ContentLength = append(p.ContentLength, rp.ContentLength)
 	p.Url.Add(rp.Url)
 	p.Qs.Add(rp.Qs)
 	p.Headers.Add(rp.Headers)
 
 }
 
-func (rp *ReqProfile) Profile(req *http.Request) {
+func (rp *ReqProfile) Profile(req *http.Request, cip string) {
+	rp.ClientIp = cip
+	rp.Method = req.Method
+	rp.Proto = req.Proto
+	log2length := uint8(0)
+	length := req.ContentLength
+	for length > 0 {
+		log2length++
+		length >>= 1
+	}
+	rp.ContentLength = log2length
 	rp.Url = new(UrlProfile)
 	rp.Url.Profile(req.URL.Path)
 	rp.Qs = new(QueryProfile)
@@ -325,6 +337,14 @@ func (rp *ReqProfile) Marshal(depth int) string {
 	var description bytes.Buffer
 	shift := strings.Repeat("  ", depth)
 	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Method: %v\n", rp.Method))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Proto: %v\n", rp.Proto))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  ClientIp: %s\n", rp.ClientIp))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  ContentLength: %d\n", int(math.Pow(2, float64(rp.ContentLength)))))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Url: %s", rp.Url.Marshal(depth+1)))
 	description.WriteString(shift)
@@ -346,7 +366,7 @@ func (config *ReqConfig) Normalize() {
 	config.Url.Normalize()
 }
 
-func (config *RespConfig) Decide(rp *ReqProfile) string {
+func (config *RespConfig) Decide(rp *RespProfile) string {
 	ret := config.Headers.Decide(rp.Headers)
 	if ret == "" {
 		return ret
@@ -357,16 +377,40 @@ func (config *RespConfig) Decide(rp *ReqProfile) string {
 func (config *ReqConfig) Decide(rp *ReqProfile) string {
 	var ret string
 	ret = config.Url.Decide(rp.Url)
-	if ret == "" {
-		ret = config.Qs.Decide(rp.Qs)
-		if ret == "" {
-			ret = config.Headers.Decide(rp.Headers)
-			if ret == "" {
-				return ret
-			}
-		}
+	if ret != "" {
+		return fmt.Sprintf("Url: %s", ret)
 	}
-	return fmt.Sprintf("HttpRequest: %s", ret)
+	ret = config.Qs.Decide(rp.Qs)
+	if ret != "" {
+		return fmt.Sprintf("QueryString: %s", ret)
+	}
+	ret = config.Headers.Decide(rp.Headers)
+	if ret != "" {
+		return fmt.Sprintf("Headers: %s", ret)
+	}
+	clientIpSet := make(Set)
+	clientIpSet[rp.ClientIp] = true
+	ret = config.ClientIp.Decide(clientIpSet)
+	if ret != "" {
+		return fmt.Sprintf("ClientIp: %s", ret)
+	}
+	methodSet := make(Set)
+	methodSet[rp.Method] = true
+	ret = config.Method.Decide(methodSet)
+	if ret != "" {
+		return fmt.Sprintf("Method: %s", ret)
+	}
+	protoSet := make(Set)
+	protoSet[rp.Proto] = true
+	ret = config.Proto.Decide(protoSet)
+	if ret != "" {
+		return fmt.Sprintf("Proto: %s", ret)
+	}
+	ret = config.ContentLength.Decide(rp.ContentLength)
+	if ret != "" {
+		return fmt.Sprintf("ContentLength: %s", ret)
+	}
+	return ""
 }
 
 func (config *RespConfig) Marshal(depth int) string {
@@ -384,6 +428,14 @@ func (config *ReqConfig) Marshal(depth int) string {
 	var description bytes.Buffer
 	shift := strings.Repeat("  ", depth)
 	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Method: %v", config.Method))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Proto: %v", config.Proto))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  ClientIp: %v", config.ClientIp))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  ContentLength: %s", config.ContentLength.Marshal()))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Url: %s", config.Url.Marshal(depth+1)))
 	description.WriteString(shift)

@@ -91,7 +91,7 @@ func main() {
 	g.Spec = new(wsecurity.GuardianSpec)
 	g.Spec.Control.Consult = true
 	g.Spec.Control.RequestsPerMinuete = 60
-	g.Spec.Contigured.Req.AddTypicalVal()
+	g.Spec.Configured.Req.AddTypicalVal()
 	/*g.Spec.ForceAllow = true
 	g.Spec.Req.Url.Segments = make(wsecurity.U8MinmaxSlice, 1)
 	g.Spec.Req.Url.Segments[0].Max = 4

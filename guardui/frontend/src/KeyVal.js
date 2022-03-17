@@ -3,7 +3,6 @@ import TreeItem from '@mui/lab/TreeItem';
 import { SimpleVal } from "./SimpleVal";
 import {SelectKeyDialog} from "./SelectKeyDialog";
 import {AddKeyDialog} from './AddKeyDialog';
-import {CheckedKeySlice} from "./CheckedKeySlice";
 import {IconButton, Divider} from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import RemoveRoundedIcon from '@mui/icons-material/RemoveRounded';
@@ -23,38 +22,19 @@ function KeyVal(props) {
   }, [nodeId]);
   
   console.log("keyval data", data)
-  let minSet = {}
-  //for (var key in data.vals) {  
-  //  minSet[key] = data.minimalSet.includes(key)
-  //}
   const [version, setVersion] = useState(0);
   const [newkeyOpen, setNewkey] = useState(false);
   const [delkeyOpen, delKey] = useState(false);
-  //const [minimalSet, setMinimalSet] = useState(minSet);
 
   function onValsChange(key, d) {
-    //data.vals[key] = d 
-    //console.log("onValsChange", key, d, data)
     onDataChange(data)
   }
   function onOtherValsChange(key, d) {
-    //data.otherVals = d 
-    //console.log("onOtherValsChange", d, data)
     onDataChange(data)  
   }
   function onOtherKeynamesChange(key, d) {
-    //data.otherKeynames = d 
-    //console.log("onOtherKeynamesChange", d, data)
     onDataChange(data)
   }
-  //function onMinimalSetChange(key, d) {
-  //  data.minimalSet = []
-  //  for (var k in d) { 
-  //    if (d[k]) data.minimalSet.push(k)
-  //  }
-  //  console.log("onMinimalSetChange", d, data)
-  //  onDataChange(data)
-  //}
   function handleValDel() {
     delKey(true)
   }
@@ -67,7 +47,6 @@ function KeyVal(props) {
       delete(data.vals[k])
       console.log("handleDelKey", data)  
       onDataChange(data)
-      //setVersion(version+1);
     }
     delKey(false)
   }
@@ -77,16 +56,8 @@ function KeyVal(props) {
       console.log("onNewKey", data)  
     }
     setNewkey(false)
-    let minSet = {}
-    //for (key in data.vals) {  
-    //  minSet[key] = data.minimalSet.includes(key)
-    //}
-    console.log("onNewKey  minSet", minSet)
     onDataChange(data)
-    //setMinimalSet(minSet)
     setVersion(version+1)
-    
-    //setVersion(version+1);
   };
   
   let res = []
@@ -96,7 +67,6 @@ function KeyVal(props) {
       <SimpleVal data={v} nodeId={nodeId+key} key={nodeId+key} keyId={key} name={key} onDataChange={onValsChange}/>
     )
   }
-  //console.log("******* KEy Val Refresh ******", minimalSet)
   return (
       <TreeItem nodeId={nodeId} label={name}>
         <SelectKeyDialog open={delkeyOpen} name="Key to delete" data ={Object.keys(data.vals)} onClose={onSelectKey} ></SelectKeyDialog>

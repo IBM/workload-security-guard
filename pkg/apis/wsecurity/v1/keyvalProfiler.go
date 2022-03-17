@@ -122,23 +122,23 @@ func (config *KeyValConfig) Decide(kvp *KeyValProfile) string {
 			// Decide based on a known key
 			if config.Vals != nil && config.Vals[k] != nil {
 				if ret := config.Vals[k].Decide(v); ret != "" {
-					return fmt.Sprintf("KeyVal known Key %s: %s", k, ret)
+					return fmt.Sprintf("Known Key %s: %s", k, ret)
 				}
 				continue
 			}
 			// Not a known key...
 			if config.OtherKeynames == nil || config.OtherVals == nil {
-				return fmt.Sprintf("KeyVal key %s is not known", k)
+				return fmt.Sprintf("Key %s is not known", k)
 			}
 			// Decide keyname of not known key
 			var keynames SimpleValProfile
 			keynames.Profile(k)
 			if ret := config.OtherKeynames.Decide(&keynames); ret != "" {
-				return fmt.Sprintf("KeyVal other keyname %s: %s", k, ret)
+				return fmt.Sprintf("Other keyname %s: %s", k, ret)
 			}
 			// Decide val of not known key
 			if ret := config.OtherVals.Decide(v); ret != "" {
-				return fmt.Sprintf("KeyVal other keyname %s: %s", k, ret)
+				return fmt.Sprintf("Other keyname %s: %s", k, ret)
 			}
 			continue
 		}
@@ -260,24 +260,6 @@ func (config *KeyValConfig) Marshal(depth int) string {
 		started = true
 	}
 
-	/*
-		if config.MinimalSet != nil {
-			if started {
-				description.WriteString(", ")
-			} else {
-				description.WriteString("  ")
-			}
-			description.WriteString(shift)
-			description.WriteString(", MinimalSet: {\n")
-			for k, v := range config.MinimalSet {
-				description.WriteString(shift)
-				description.WriteString(fmt.Sprintf("  , %s: %s\n", k, v))
-			}
-			description.WriteString(shift)
-			description.WriteString("  }\n")
-			started = true
-		}
-	*/
 	if config.OtherKeynames != nil {
 		description.WriteString(shift)
 		if started {
