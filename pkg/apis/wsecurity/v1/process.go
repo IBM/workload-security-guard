@@ -59,6 +59,20 @@ func (config *ProcessConfig) Normalize() {
 }
 
 func (config *ProcessConfig) Decide(pp *ProcessProfile) string {
+	//TBD move from string to net.IP and net.subnet, depend on a new IpSet rather than Set
+	/*
+		y := "1.2.4.6"
+		x := "1.2.3.16/22"
+		ipy := net.ParseIP(y)
+		ipx, subnetx, _ := net.ParseCIDR(x)
+		if ipx == nil {
+			ipx = net.ParseIP(x)
+			fmt.Printf("ipy == ipx %v\n", ipx.Equal(ipy))
+		} else {
+			fmt.Printf("ipy In Subnetx %v\n", subnetx.Contains(ipy))
+		}
+	*/
+
 	var ret string
 	ret = config.ResponseTime.Decide(pp.ResponseTime)
 	if ret != "" {
@@ -162,39 +176,58 @@ func nextForignIp(data []byte) (remoteIp string, moreData []byte) {
 		}
 	}
 	moreData = data[i:]
-	ipstr := string(data[:i])
-	if len(ipstr) == 8 {
 
+	ipstr := string(data[:i])
+	fmt.Printf("Proccessing IP %s\n", ipstr)
+	var ip net.IP
+	if len(ipstr) == 8 { //ipv4
+		ip = make(net.IP, net.IPv4len)
 		v, err := strconv.ParseUint(ipstr, 16, 32)
 		if err != nil {
-			//fmt.Printf("err %v\n", err)
 			return
 		}
-		ip := make(net.IP, net.IPv4len)
 		binary.LittleEndian.PutUint32(ip, uint32(v))
-
-		remoteIp = ip.String()
-		return
-	}
-	if len(ipstr) == 32 {
-		ip := make(net.IP, net.IPv6len)
-		const grpLen = 4
-		i, j := 0, 4
-		for len(ipstr) != 0 {
-			grp := ipstr[0:8]
-			u, err := strconv.ParseUint(grp, 16, 32)
-			binary.LittleEndian.PutUint32(ip[i:j], uint32(u))
+		fmt.Printf("Proccessed IPv4 %s\n", ip.String())
+	} else if len(ipstr) == 32 { //ipv6
+		ip = make(net.IP, net.IPv6len)
+		for i := 0; i < 16; i += 4 {
+			u, err := strconv.ParseUint(ipstr[0:8], 16, 32)
 			if err != nil {
-				//fmt.Printf("err %v\n", err)
 				return
 			}
-			i, j = i+grpLen, j+grpLen
-			ipstr = ipstr[8:]
+			binary.LittleEndian.PutUint32(ip[i:i+4], uint32(u))
+			ipstr = ipstr[8:] //skip 8 bytes
 		}
-
-		remoteIp = ip.String()
+		fmt.Printf("Proccessed IPv6 %s\n", ip.String())
+	} else {
+		fmt.Printf("Proccessed skipped IP structrue\n")
+		return
 	}
+	if ip.IsUnspecified() || ip.IsLoopback() || ip.IsPrivate() {
+		return
+	}
+	remoteIp = ip.String()
+	fmt.Printf("Adding IP %s (not unspecified, private or loopback!)\n", ip.String())
 	return
+	//const grpLen = 4
+	//i, j := 0, 4
+	//i := 0
+
+	//for i := 0; i < 16; i += 4 {
+	//for len(ipstr) != 0 {
+	//grp := ipstr[0:8] // next 8 bytes of IP
+	//	u, err := strconv.ParseUint(ipstr[0:8], 16, 32)
+	//	if err != nil {
+	//fmt.Printf("err %v\n", err)
+	//		return
+	//	}
+	//binary.LittleEndian.PutUint32(ip[i:j], uint32(u))
+	//	binary.LittleEndian.PutUint32(ip[i:i+4], uint32(u))
+	//i, j = i+grpLen, j+grpLen
+	//i += 4
+	//	ipstr = ipstr[8:] //skip 8 bytes
+	//}
+
 }
 
 func periodicalNet(protocol string) (m map[string]bool) {
@@ -202,6 +235,7 @@ func periodicalNet(protocol string) (m map[string]bool) {
 	procfile := "/proc/net/" + protocol
 	data, err := ioutil.ReadFile(procfile)
 	if err != nil {
+		fmt.Printf("error while reading %s: %s\n", procfile, err.Error())
 		// Used for development and debugging on macos - remove TODO
 		procfile = "/tmp" + procfile
 		data, err = ioutil.ReadFile(procfile)
@@ -221,6 +255,7 @@ func periodicalNet(protocol string) (m map[string]bool) {
 
 // Profile timestamps and /proc
 func (pp *ProcessProfile) Profile(reqTime time.Time, respTime time.Time, endTime time.Time) {
+	fmt.Println("Process Profile")
 	pp.Tcp4Peers = Set(periodicalNet("tcp"))
 	pp.Udp4Peers = Set(periodicalNet("udp"))
 	pp.Udplite4Peers = Set(periodicalNet("udplite"))

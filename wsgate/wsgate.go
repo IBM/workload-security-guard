@@ -342,7 +342,7 @@ func requestFilter(buf []byte) error {
 	return nil
 }
 
-func (p *plug) periodical(ctx context.Context) {
+func (p *plug) periodical(ctx context.Context) bool {
 	pp := new(spec.ProcessProfile)
 
 	now := time.Now()
@@ -352,6 +352,26 @@ func (p *plug) periodical(ctx context.Context) {
 	}
 	pp.Profile(reqTime, reqTime, now)
 	fmt.Println(pp.Marshal(0))
+
+	ctrl := p.wsGate.Control
+	var decission string
+	if ctrl.Auto {
+		decission = p.wsGate.Learned.Process.Decide(pp)
+	} else {
+		decission = p.wsGate.Configured.Process.Decide(pp)
+	}
+	if decission == "" {
+		//if ctrl.Learn {
+		//	p.reportAllow(pp)
+		//}
+	} else {
+		pi.Log.Infof("Alert while processing: %s", decission)
+		//p.reportBlock(pp, decission)
+		if !p.wsGate.Control.Block {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
@@ -411,7 +431,11 @@ func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 				cancelFunction()
 				return
 			case <-ticker.C:
-				p.periodical(newCtx)
+				if p.periodical(newCtx) {
+					pi.Log.Infof("Blocked while processing!")
+					ticker.Stop()
+					cancelFunction()
+				}
 			}
 		}
 	}(newCtx, cancelFunction, req, timeout)
