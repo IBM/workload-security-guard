@@ -2,11 +2,8 @@ package v1
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"net"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -14,23 +11,23 @@ import (
 type ProcessPile struct {
 	ResponseTime   []uint8 `json:"responsetime"`
 	CompletionTime []uint8 `json:"completiontime"`
-	Tcp4Peers      Set     `json:"tcp4peers"`     // from /proc/net/tcp
-	Udp4Peers      Set     `json:"udp4peers"`     // from /proc/net/udp
-	Udplite4Peers  Set     `json:"udplite4peers"` // from /proc/udpline
-	Tcp6Peers      Set     `json:"tcp6peers"`     // from /proc/net/tcp6
-	Udp6Peers      Set     `json:"udp6peers"`     // from /proc/net/udp6
-	Udplite6Peers  Set     `json:"udplite6peers"` // from /proc/net/udpline6
+	Tcp4Peers      *IpSet  `json:"tcp4peers"`     // from /proc/net/tcp
+	Udp4Peers      *IpSet  `json:"udp4peers"`     // from /proc/net/udp
+	Udplite4Peers  *IpSet  `json:"udplite4peers"` // from /proc/udpline
+	Tcp6Peers      *IpSet  `json:"tcp6peers"`     // from /proc/net/tcp6
+	Udp6Peers      *IpSet  `json:"udp6peers"`     // from /proc/net/udp6
+	Udplite6Peers  *IpSet  `json:"udplite6peers"` // from /proc/net/udpline6
 }
 
 type ProcessConfig struct {
 	ResponseTime   U8MinmaxSlice `json:"responsetime"`
 	CompletionTime U8MinmaxSlice `json:"completiontime"`
-	Tcp4Peers      Set           `json:"tcp4peers"`     // from /proc/net/tcp
-	Udp4Peers      Set           `json:"udp4peers"`     // from /proc/net/udp
-	Udplite4Peers  Set           `json:"udplite4peers"` // from /proc/udpline
-	Tcp6Peers      Set           `json:"tcp6peers"`     // from /proc/net/tcp6
-	Udp6Peers      Set           `json:"udp6peers"`     // from /proc/net/udp6
-	Udplite6Peers  Set           `json:"udplite6peers"` // from /proc/net/udpline6
+	Tcp4Peers      IpnetSet      `json:"tcp4peers"`     // from /proc/net/tcp
+	Udp4Peers      IpnetSet      `json:"udp4peers"`     // from /proc/net/udp
+	Udplite4Peers  IpnetSet      `json:"udplite4peers"` // from /proc/udpline
+	Tcp6Peers      IpnetSet      `json:"tcp6peers"`     // from /proc/net/tcp6
+	Udp6Peers      IpnetSet      `json:"udp6peers"`     // from /proc/net/udp6
+	Udplite6Peers  IpnetSet      `json:"udplite6peers"` // from /proc/net/udpline6
 }
 
 type ProcessProfile struct {
@@ -38,12 +35,12 @@ type ProcessProfile struct {
 	CompletionTime uint8 `json:"completiontime"`
 
 	// from local /proc/net (same net namespace)
-	Tcp4Peers     Set `json:"tcp4peers"`     // from /proc/net/tcp
-	Udp4Peers     Set `json:"udp4peers"`     // from /proc/net/udp
-	Udplite4Peers Set `json:"udplite4peers"` // from /proc/udpline
-	Tcp6Peers     Set `json:"tcp6peers"`     // from /proc/net/tcp6
-	Udp6Peers     Set `json:"udp6peers"`     // from /proc/net/udp6
-	Udplite6Peers Set `json:"udplite6peers"` // from /proc/net/udpline6
+	Tcp4Peers     *IpSet `json:"tcp4peers"`     // from /proc/net/tcp
+	Udp4Peers     *IpSet `json:"udp4peers"`     // from /proc/net/udp
+	Udplite4Peers *IpSet `json:"udplite4peers"` // from /proc/udpline
+	Tcp6Peers     *IpSet `json:"tcp6peers"`     // from /proc/net/tcp6
+	Udp6Peers     *IpSet `json:"udp6peers"`     // from /proc/net/udp6
+	Udplite6Peers *IpSet `json:"udplite6peers"` // from /proc/net/udpline6
 
 	// The below requires sharing Process Namespace...
 	ProcessCount uint32        `json:"processcount"` // from /proc/[1-9] - require ssh to container
@@ -56,6 +53,13 @@ type ProcessProfile struct {
 func (config *ProcessConfig) Normalize() {
 	config.ResponseTime = append(config.ResponseTime, U8Minmax{0, 0})
 	config.CompletionTime = append(config.CompletionTime, U8Minmax{0, 0})
+	config.Tcp4Peers = make([]net.IPNet, 0)
+	config.Udp4Peers = make([]net.IPNet, 0)
+	config.Udplite4Peers = make([]net.IPNet, 0)
+	config.Tcp6Peers = make([]net.IPNet, 0)
+	config.Udp6Peers = make([]net.IPNet, 0)
+	config.Udplite6Peers = make([]net.IPNet, 0)
+
 }
 
 func (config *ProcessConfig) Decide(pp *ProcessProfile) string {
@@ -142,126 +146,15 @@ func (config *ProcessConfig) AddTypicalVal() {
 	config.CompletionTime[0].Max = 120
 }
 
-func nextForignIp(data []byte) (remoteIp string, moreData []byte) {
-	var i int
-	var b byte
-	for i, b = range data {
-		if b == 0xA { // get to end of line
-			break
-		}
-	}
-	data = data[i:]
-	for i, b = range data {
-		if b == 0x3A { // get to colon after sl
-			break
-		}
-	}
-	if len(data) < i+20 {
-		return
-	}
-	data = data[i+1:]
-	for i, b = range data {
-		if b == 0x3A { // get to colon after localIp
-			break
-		}
-	}
-	if len(data) < i+20 {
-		return
-	}
-	data = data[i+6:]
-
-	for i, b = range data {
-		if b == 0x3A { // get to colon after remoteIp
-			break
-		}
-	}
-	moreData = data[i:]
-
-	ipstr := string(data[:i])
-	fmt.Printf("Proccessing IP %s\n", ipstr)
-	var ip net.IP
-	if len(ipstr) == 8 { //ipv4
-		ip = make(net.IP, net.IPv4len)
-		v, err := strconv.ParseUint(ipstr, 16, 32)
-		if err != nil {
-			return
-		}
-		binary.LittleEndian.PutUint32(ip, uint32(v))
-		fmt.Printf("Proccessed IPv4 %s\n", ip.String())
-	} else if len(ipstr) == 32 { //ipv6
-		ip = make(net.IP, net.IPv6len)
-		for i := 0; i < 16; i += 4 {
-			u, err := strconv.ParseUint(ipstr[0:8], 16, 32)
-			if err != nil {
-				return
-			}
-			binary.LittleEndian.PutUint32(ip[i:i+4], uint32(u))
-			ipstr = ipstr[8:] //skip 8 bytes
-		}
-		fmt.Printf("Proccessed IPv6 %s\n", ip.String())
-	} else {
-		fmt.Printf("Proccessed skipped IP structrue\n")
-		return
-	}
-	if ip.IsUnspecified() || ip.IsLoopback() || ip.IsPrivate() {
-		return
-	}
-	remoteIp = ip.String()
-	fmt.Printf("Adding IP %s (not unspecified, private or loopback!)\n", ip.String())
-	return
-	//const grpLen = 4
-	//i, j := 0, 4
-	//i := 0
-
-	//for i := 0; i < 16; i += 4 {
-	//for len(ipstr) != 0 {
-	//grp := ipstr[0:8] // next 8 bytes of IP
-	//	u, err := strconv.ParseUint(ipstr[0:8], 16, 32)
-	//	if err != nil {
-	//fmt.Printf("err %v\n", err)
-	//		return
-	//	}
-	//binary.LittleEndian.PutUint32(ip[i:j], uint32(u))
-	//	binary.LittleEndian.PutUint32(ip[i:i+4], uint32(u))
-	//i, j = i+grpLen, j+grpLen
-	//i += 4
-	//	ipstr = ipstr[8:] //skip 8 bytes
-	//}
-
-}
-
-func periodicalNet(protocol string) (m map[string]bool) {
-	m = make(map[string]bool)
-	procfile := "/proc/net/" + protocol
-	data, err := ioutil.ReadFile(procfile)
-	if err != nil {
-		fmt.Printf("error while reading %s: %s\n", procfile, err.Error())
-		// Used for development and debugging on macos - remove TODO
-		procfile = "/tmp" + procfile
-		data, err = ioutil.ReadFile(procfile)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-	}
-	var ip string
-	ip, data = nextForignIp(data)
-	for data != nil {
-		m[ip] = true
-		ip, data = nextForignIp(data)
-	}
-	return
-}
-
 // Profile timestamps and /proc
 func (pp *ProcessProfile) Profile(reqTime time.Time, respTime time.Time, endTime time.Time) {
 	fmt.Println("Process Profile")
-	pp.Tcp4Peers = Set(periodicalNet("tcp"))
-	pp.Udp4Peers = Set(periodicalNet("udp"))
-	pp.Udplite4Peers = Set(periodicalNet("udplite"))
-	pp.Tcp6Peers = Set(periodicalNet("tcp6"))
-	pp.Udp6Peers = Set(periodicalNet("udp6"))
-	pp.Udplite6Peers = Set(periodicalNet("udplite6"))
+	pp.Tcp4Peers = IpSetFromProc("tcp")
+	pp.Udp4Peers = IpSetFromProc("udp")
+	pp.Udplite4Peers = IpSetFromProc("udplite")
+	pp.Tcp6Peers = IpSetFromProc("tcp6")
+	pp.Udp6Peers = IpSetFromProc("udp6")
+	pp.Udplite6Peers = IpSetFromProc("udplite6")
 
 	completionTime := endTime.Sub(reqTime).Seconds()
 	if completionTime > 255 {

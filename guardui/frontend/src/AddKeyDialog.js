@@ -5,12 +5,16 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import TextField from "@mui/material/TextField";
+import {Alert, AlertTitle} from '@mui/material';
 
 
 function AddKeyDialog(props) {
-  var { data, onClose, open} = props;
+  var { data, onClose, open, regex, title} = props;
   const [keyname, setKeyname] = useState("");
-
+  if (!title) {
+    title = "Add Key"
+  }
+  
   function handleNewKey(event) {
     let k = event.target.value
     setKeyname(k)
@@ -26,16 +30,32 @@ function AddKeyDialog(props) {
     if (data.includes(keyname))  {
         console.log("handleOk key already exists") 
         onClose("")
-        console.log("handleOk after key already exists")
         return
     }
+
+    if (regex && !regex.test(keyname)) {
+      console.log("handleOk ilegal key") 
+      //onClose("")
+      return
+    }
+
     console.log("handleOk after closing")  
     onClose(keyname)
   }
 
+  let alert
+  if (regex && keyname.length) { 
+    if (!regex.test(keyname)) { 
+      alert = <Alert severity="warning">Ilegal Value</Alert>
+    } else {
+      alert =  <Alert severity="success">Legal Value</Alert>
+    }  
+
+  }
+
   return (       
     <Dialog open={open} onClose={handleCancel} >
-    <DialogTitle>Add Key</DialogTitle>
+    <DialogTitle>{title}</DialogTitle>
     <DialogContent >
       <TextField
         autoFocus
@@ -46,6 +66,7 @@ function AddKeyDialog(props) {
         variant="standard"
         onChange={handleNewKey}
       />
+    {alert}      
     </DialogContent>
     <DialogActions>
       <Button onClick={handleCancel}>Cancel</Button>

@@ -116,7 +116,8 @@ func (p *plug) screenRequest(req *http.Request) error {
 	// TBD req.Form
 
 	rp := new(spec.ReqProfile)
-	rp.Profile(req, cip)
+	ip := net.ParseIP(cip)
+	rp.Profile(req, ip)
 	fmt.Println(rp.Marshal(0))
 	fmt.Println(p.wsGate.Configured)
 	ctrl := p.wsGate.Control

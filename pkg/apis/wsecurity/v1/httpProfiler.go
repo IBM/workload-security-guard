@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"net"
 	"net/http"
 	"strings"
 )
@@ -17,7 +18,7 @@ type RespConfig struct {
 }
 
 type ReqPile struct {
-	ClientIp      []string `json:"cip"`           // 127.0.0.1
+	ClientIp      []net.IP `json:"cip"`           // 127.0.0.1
 	Method        []string `json:"method"`        // GET
 	Proto         []string `json:"proto"`         // "HTTP/1.1"
 	ContentLength []uint8  `json:"contentlength"` // 0
@@ -28,7 +29,7 @@ type ReqPile struct {
 }
 
 type ReqConfig struct {
-	ClientIp      Set           `json:"cip"`           // 127.0.0.1
+	ClientIp      IpnetSet      `json:"cip"`           // subnets for nexternal IPs
 	Method        Set           `json:"method"`        // GET
 	Proto         Set           `json:"proto"`         // "HTTP/1.1"
 	ContentLength U8MinmaxSlice `json:"contentlength"` // 0
@@ -39,7 +40,7 @@ type ReqConfig struct {
 }
 
 type ReqProfile struct {
-	ClientIp      string          `json:"cip"`           // 127.0.0.1
+	ClientIp      net.IP          `json:"cip"`           // 127.0.0.1
 	Method        string          `json:"method"`        // GET
 	Proto         string          `json:"proto"`         // "HTTP/1.1"
 	ContentLength uint8           `json:"contentlength"` // 0
@@ -314,7 +315,7 @@ func (p *ReqPile) Add(rp *ReqProfile) {
 
 }
 
-func (rp *ReqProfile) Profile(req *http.Request, cip string) {
+func (rp *ReqProfile) Profile(req *http.Request, cip net.IP) {
 	rp.ClientIp = cip
 	rp.Method = req.Method
 	rp.Proto = req.Proto
@@ -342,7 +343,7 @@ func (rp *ReqProfile) Marshal(depth int) string {
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Proto: %v\n", rp.Proto))
 	description.WriteString(shift)
-	description.WriteString(fmt.Sprintf("  ClientIp: %s\n", rp.ClientIp))
+	description.WriteString(fmt.Sprintf("  ClientIp: %s\n", rp.ClientIp.String()))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  ContentLength: %d\n", int(math.Pow(2, float64(rp.ContentLength)))))
 	description.WriteString(shift)
@@ -388,12 +389,13 @@ func (config *ReqConfig) Decide(rp *ReqProfile) string {
 	if ret != "" {
 		return fmt.Sprintf("Headers: %s", ret)
 	}
-	clientIpSet := make(Set)
-	clientIpSet[rp.ClientIp] = true
-	ret = config.ClientIp.Decide(clientIpSet)
-	if ret != "" {
-		return fmt.Sprintf("ClientIp: %s", ret)
+	if !rp.ClientIp.IsUnspecified() && !rp.ClientIp.IsLoopback() && !rp.ClientIp.IsPrivate() {
+		ret = config.ClientIp.Decide(IpSetFromIp(rp.ClientIp))
+		if ret != "" {
+			return fmt.Sprintf("ClientIp: %s", ret)
+		}
 	}
+
 	methodSet := make(Set)
 	methodSet[rp.Method] = true
 	ret = config.Method.Decide(methodSet)
@@ -429,13 +431,13 @@ func (config *ReqConfig) Marshal(depth int) string {
 	shift := strings.Repeat("  ", depth)
 	description.WriteString("{\n")
 	description.WriteString(shift)
-	description.WriteString(fmt.Sprintf("  Method: %v", config.Method))
+	description.WriteString(fmt.Sprintf("  Method: %v\n", config.Method))
 	description.WriteString(shift)
-	description.WriteString(fmt.Sprintf("  Proto: %v", config.Proto))
+	description.WriteString(fmt.Sprintf("  Proto: %v\n", config.Proto))
 	description.WriteString(shift)
-	description.WriteString(fmt.Sprintf("  ClientIp: %v", config.ClientIp))
+	description.WriteString(fmt.Sprintf("  ClientIp: %v\n", config.ClientIp))
 	description.WriteString(shift)
-	description.WriteString(fmt.Sprintf("  ContentLength: %s", config.ContentLength.Marshal()))
+	description.WriteString(fmt.Sprintf("  ContentLength: %s\n", config.ContentLength.Marshal()))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Url: %s", config.Url.Marshal(depth+1)))
 	description.WriteString(shift)

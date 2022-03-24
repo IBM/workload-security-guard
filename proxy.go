@@ -43,7 +43,7 @@ func main() {
 	defer logger.Sync() // flushes buffer, if any
 	log := logger.Sugar()
 
-	url, err := url.Parse("http://127.0.0.1:8080")
+	url, err := url.Parse("http://127.0.0.1:8888")
 	if err != nil {
 		panic(err)
 	}
@@ -51,7 +51,7 @@ func main() {
 	var h http.Handler = proxy
 
 	// Hook using RoundTripper
-	os.Setenv("WSGATE_GUARD_URL", "http://127.0.0.1:8888")
+	os.Setenv("WSGATE_GUARD_URL", "http://127.0.0.1:8082")
 	os.Setenv("RTPLUGS", "wsgate")
 	os.Setenv("SERVING_NAMESPACE", "default")
 	os.Setenv("SERVING_SERVICE", "myserver")

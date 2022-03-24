@@ -1,7 +1,7 @@
 import React, {useEffect} from "react";
 import TreeItem from '@mui/lab/TreeItem';
 import { U8MinmaxSlice } from './U8MinmaxSlice';
-import { Set } from './Set';
+import { Subnets } from './Subnets';
 import {Toggle} from './Guardian'
 
 
@@ -72,12 +72,12 @@ return (
     <TreeItem nodeId={nodeId} label={name}> 
         <U8MinmaxSlice data={data.responsetime} nodeId={nodeId+">responsetime"} name="Response Time" onDataChange={handleResponseTimeChange}></U8MinmaxSlice>
         <U8MinmaxSlice data={data.completiontime} nodeId={nodeId+">completiontime"} name="Completion Time" onDataChange={handleCompletionTimeChange}></U8MinmaxSlice>
-        <Set data={data.tcp4peers} nodeId={nodeId+">tcp4peers"} name="TCP Ipv4 peers" onDataChange={handleTcp4peersChange}></Set>
-        <Set data={data.udp4peers} nodeId={nodeId+">udp4peers"} name="UDP Ipv4 peers" onDataChange={handleUdp4peersChange}></Set>
-        <Set data={data.udplite4peers} nodeId={nodeId+">udplite4peers"} name="UDP Lite Ipv4 peers" onDataChange={handleUdpLite4peersChange}></Set>
-        <Set data={data.tcp6peers} nodeId={nodeId+">tcp6peers"} name="TCP Ipv6 peers" onDataChange={handleTcp6peersChange}></Set>
-        <Set data={data.udp6peers} nodeId={nodeId+">udp6peers"} name="UDP Ipv6 peers" onDataChange={handleUdp6peersChange}></Set>
-        <Set data={data.udplite6peers} nodeId={nodeId+">udplite6peers"} name="UDP Lite Ipv6 peers" onDataChange={handleUdpLite6peersChange}></Set>
+        <Subnets data={data.tcp4peers} nodeId={nodeId+">tcp4peers"} name="TCP Ipv4 peers" onDataChange={handleTcp4peersChange}></Subnets>
+        <Subnets data={data.udp4peers} nodeId={nodeId+">udp4peers"} name="UDP Ipv4 peers" onDataChange={handleUdp4peersChange}></Subnets>
+        <Subnets data={data.udplite4peers} nodeId={nodeId+">udplite4peers"} name="UDP Lite Ipv4 peers" onDataChange={handleUdpLite4peersChange}></Subnets>
+        <Subnets data={data.tcp6peers} nodeId={nodeId+">tcp6peers"} ipv6={true} name="TCP Ipv6 peers" onDataChange={handleTcp6peersChange}></Subnets>
+        <Subnets data={data.udp6peers} nodeId={nodeId+">udp6peers"} ipv6={true} name="UDP Ipv6 peers" onDataChange={handleUdp6peersChange}></Subnets>
+        <Subnets data={data.udplite6peers} nodeId={nodeId+">udplite6peers"} ipv6={true} name="UDP Lite Ipv6 peers" onDataChange={handleUdpLite6peersChange}></Subnets>
     </TreeItem>
     )
 }

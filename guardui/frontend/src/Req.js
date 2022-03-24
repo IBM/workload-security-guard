@@ -2,6 +2,7 @@ import React, {useEffect} from "react";
 import TreeItem from '@mui/lab/TreeItem';
 
 import { Set } from './Set';
+import { Subnets } from './Subnets';
 import { U8MinmaxSlice } from './U8MinmaxSlice';
 import { Url } from './Url';
 import { Qs } from './Qs';
@@ -59,7 +60,7 @@ return (
     <TreeItem nodeId={nodeId} label={name} sx={{ textAlign: "start"}}>
         <Set data={data.method} nodeId={nodeId+">Method"} name="Method" onDataChange={handleMethodChange}></Set>    
         <Set data={data.proto} nodeId={nodeId+">Proto"} name="Proto" onDataChange={handleProtoChange}></Set>    
-        <Set data={data.cip} nodeId={nodeId+">Cip"} name="Client Ip" onDataChange={handleCipChange}></Set>    
+        <Subnets data={data.cip} nodeId={nodeId+">Cip"} name="Client Ip" onDataChange={handleCipChange}></Subnets>    
         <U8MinmaxSlice data={data.contentlength} nodeId={nodeId+">ContentLength"} name="Content Length (2 to the power)" onDataChange={handleContentLengthChange}></U8MinmaxSlice>    
         <Url data={data.url} nodeId={nodeId+">Url"} name="Url" onDataChange={handleUrlChange}></Url>
         <Qs data={data.qs} nodeId={nodeId+">Qs"} name="Qs" onDataChange={handleQsChange}></Qs>
