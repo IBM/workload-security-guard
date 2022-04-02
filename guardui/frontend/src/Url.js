@@ -25,7 +25,7 @@ function Url(props) {
 
 return (
     <TreeItem nodeId={nodeId} label={name}> 
-        <U8MinmaxSlice data={data.segments} nodeId={nodeId+">Segements"} name="Url Segments" onDataChange={handleSegmentsChange}></U8MinmaxSlice>
+        <U8MinmaxSlice data={data.segments} nodeId={nodeId+">Segements"} name="Url Segments" description="Number of segments (/home.htm is 1, /my/home.html is 2)" onDataChange={handleSegmentsChange}></U8MinmaxSlice>
         <SimpleVal data={data.val} keyId={"url"} nodeId={nodeId+">Val"} name="Url Characters" onDataChange={handleValChange}></SimpleVal>
     </TreeItem>
     )

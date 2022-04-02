@@ -1,9 +1,10 @@
 import React, {useState} from 'react';
 import { U8MinMax } from './U8MinMax';
 import TreeItem from '@mui/lab/TreeItem';
-import {IconButton, Divider} from '@mui/material';
+import {IconButton, Divider, FormHelperText} from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import RemoveRoundedIcon from '@mui/icons-material/RemoveRounded';
+
 
 function mergeData(data) {
     let newData = []
@@ -24,7 +25,7 @@ function mergeData(data) {
 
 
 function U8MinmaxSlice(props) {
-    var { data, onDataChange, nodeId, name } = props;
+    var { data, onDataChange, nodeId, name, description } = props;
     if (data.length===0)   data = [{min:0, max:0}] 
     data = mergeData(data)
     const [dataVal, setData] = useState(data);
@@ -75,6 +76,7 @@ function U8MinmaxSlice(props) {
     );
     return (
        <TreeItem nodeId={nodeId} label={name}>
+           <FormHelperText>{description} </FormHelperText>
            {res}
            <Divider>
            <IconButton color="primary" aria-label="add U8MinMax" onClick={handleU8MinmaxAdd}>

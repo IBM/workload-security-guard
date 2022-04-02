@@ -18,7 +18,8 @@ type RespConfig struct {
 }
 
 type ReqPile struct {
-	ClientIp      []net.IP `json:"cip"`           // 127.0.0.1
+	ClientIp      []net.IP `json:"cip"`           // 192.168.32.1
+	HopIp         []net.IP `json:"hopip"`         // 1.2.3.4
 	Method        []string `json:"method"`        // GET
 	Proto         []string `json:"proto"`         // "HTTP/1.1"
 	ContentLength []uint8  `json:"contentlength"` // 0
@@ -29,7 +30,8 @@ type ReqPile struct {
 }
 
 type ReqConfig struct {
-	ClientIp      IpnetSet      `json:"cip"`           // subnets for nexternal IPs
+	ClientIp      IpnetSet      `json:"cip"`           // subnets for external IPs (normally empty)
+	HopIp         IpnetSet      `json:"hopip"`         // subnets for external IPs
 	Method        Set           `json:"method"`        // GET
 	Proto         Set           `json:"proto"`         // "HTTP/1.1"
 	ContentLength U8MinmaxSlice `json:"contentlength"` // 0
@@ -40,7 +42,8 @@ type ReqConfig struct {
 }
 
 type ReqProfile struct {
-	ClientIp      net.IP          `json:"cip"`           // 127.0.0.1
+	ClientIp      net.IP          `json:"cip"`           // 192.168.32.1
+	HopIp         net.IP          `json:"hopip"`         // 1.2.3.4
 	Method        string          `json:"method"`        // GET
 	Proto         string          `json:"proto"`         // "HTTP/1.1"
 	ContentLength uint8           `json:"contentlength"` // 0
@@ -97,6 +100,11 @@ type HeadersConfig struct {
 func (p *UrlPile) Add(u *UrlProfile) {
 	p.Segments = append(p.Segments, u.Segments)
 	p.Val.Add(u.Val)
+}
+
+func (p *UrlPile) Clear() {
+	p.Segments = make([]uint8, 1)
+	p.Val = new(SimpleValPile)
 }
 
 func (u *UrlProfile) Profile(path string) {
@@ -166,18 +174,23 @@ func (config *UrlConfig) Marshal(depth int) string {
 
 // Allow typical URL values - use for development but not in production
 func (config *UrlConfig) AddTypicalVal() {
-
-	config.Val.Runes = make([]U8Minmax, 1)
+	config.Val.Spaces = make([]U8Minmax, 1)
+	config.Val.Unicodes = make([]U8Minmax, 1)
+	config.Val.NonReadables = make([]U8Minmax, 1)
 	config.Val.Letters = make([]U8Minmax, 1)
 	config.Val.Digits = make([]U8Minmax, 1)
-	config.Val.Words = make([]U8Minmax, 1)
-	config.Val.Numbers = make([]U8Minmax, 1)
+	config.Val.Sequences = make([]U8Minmax, 1)
+	//config.Val.Words = make([]U8Minmax, 1)
+	//config.Val.Numbers = make([]U8Minmax, 1)
 
-	config.Val.Runes[0].Max = 64
+	config.Val.Spaces[0].Max = 0
+	config.Val.Unicodes[0].Max = 0
+	config.Val.NonReadables[0].Max = 0
 	config.Val.Letters[0].Max = 64
 	config.Val.Digits[0].Max = 64
-	config.Val.Words[0].Max = 16
-	config.Val.Numbers[0].Max = 16
+	config.Val.Sequences[0].Max = 16
+	//config.Val.Words[0].Max = 16
+	//config.Val.Numbers[0].Max = 16
 	//config.Val.FlagsL = 1 << SlashSlot
 	config.Val.Flags = 1 << SlashSlot
 	config.Segments = make([]U8Minmax, 1)
@@ -186,6 +199,10 @@ func (config *UrlConfig) AddTypicalVal() {
 
 func (p *QueryPile) Add(q *QueryProfile) {
 	p.Kv.Add(q.Kv)
+}
+
+func (p *QueryPile) Clear() {
+	p.Kv.Clear()
 }
 
 func (q *QueryProfile) Profile(m map[string][]string) {
@@ -217,8 +234,8 @@ func (config *QueryConfig) Decide(q *QueryProfile) string {
 
 // Allow typical query string values - use for development but not in production
 func (config *QueryConfig) AddTypicalVal() {
-	config.Kv.OtherKeynames = NewSimpleValConfig(16, 16, 16, 0, 4, 4)
-	config.Kv.OtherVals = NewSimpleValConfig(32, 32, 32, 0, 16, 16)
+	config.Kv.OtherKeynames = NewSimpleValConfig(0, 0, 0, 16, 16, 0, 4)
+	config.Kv.OtherVals = NewSimpleValConfig(0, 0, 0, 32, 32, 0, 16)
 }
 
 func (config *QueryConfig) Marshal(depth int) string {
@@ -234,6 +251,9 @@ func (config *QueryConfig) Marshal(depth int) string {
 
 func (p *HeadersPile) Add(h *HeadersProfile) {
 	p.Kv.Add(h.Kv)
+}
+func (p *HeadersPile) Clear() {
+	p.Kv.Clear()
 }
 
 func (h *HeadersProfile) Profile(m map[string][]string) {
@@ -277,8 +297,8 @@ func (config *HeadersConfig) Marshal(depth int) string {
 
 // Allow typical values - use for development but not in production
 func (config *HeadersConfig) AddTypicalVal() {
-	config.Kv.OtherKeynames = NewSimpleValConfig(16, 16, 16, 2, 4, 4)
-	config.Kv.OtherVals = NewSimpleValConfig(32, 32, 32, 8, 16, 16)
+	config.Kv.OtherKeynames = NewSimpleValConfig(0, 0, 0, 16, 16, 2, 4)
+	config.Kv.OtherVals = NewSimpleValConfig(0, 0, 0, 32, 32, 8, 16)
 	//config.Kv.OtherVals.FlagsL = 1<<MinusSlot | 1<<AsteriskSlot | 1<<SlashSlot | 1<<CommentsSlot | 1<<PeriodSlot
 	config.Kv.OtherVals.Flags = 1<<MinusSlot | 1<<AsteriskSlot | 1<<SlashSlot | 1<<CommentsSlot | 1<<PeriodSlot
 }
@@ -288,9 +308,13 @@ func (p *RespPile) Add(rp *RespProfile) {
 
 }
 
-func (rp *RespProfile) Profile(req *http.Request) {
+func (p *RespPile) Clear() {
+	p.Headers.Clear()
+}
+
+func (rp *RespProfile) Profile(resp *http.Response) {
 	rp.Headers = new(HeadersProfile)
-	rp.Headers.Profile(req.Header)
+	rp.Headers.Profile(resp.Header)
 }
 
 func (rp *RespProfile) Marshal(depth int) string {
@@ -312,10 +336,37 @@ func (p *ReqPile) Add(rp *ReqProfile) {
 	p.Url.Add(rp.Url)
 	p.Qs.Add(rp.Qs)
 	p.Headers.Add(rp.Headers)
+}
 
+func (p *ReqPile) Clear() {
+	p.ClientIp = make([]net.IP, 1)
+	p.Method = make([]string, 1)
+	p.Proto = make([]string, 1)
+	p.ContentLength = make([]uint8, 1)
+	p.Url.Clear()
+	p.Qs.Clear()
+	p.Headers.Clear()
 }
 
 func (rp *ReqProfile) Profile(req *http.Request, cip net.IP) {
+	var forwarded []string
+	var ok bool
+	var hopipstr string
+	var hopip net.IP
+
+	// TBD - Add support for rfc7239 "forwarded" header
+	forwarded, ok = req.Header["X-Forwarded-For"]
+	if ok {
+		numhops := len(forwarded)
+		if numhops > 0 {
+			hopipstr = forwarded[numhops-1]
+		}
+	}
+	if len(hopipstr) > 0 {
+		hopip = net.ParseIP(hopipstr)
+		rp.HopIp = hopip
+	}
+	fmt.Printf("HOP-IP %v %s %s %s \n", hopip, hopipstr, req.Header["X-Forwarded-For"], req.Header["Forwarded"])
 	rp.ClientIp = cip
 	rp.Method = req.Method
 	rp.Proto = req.Proto
@@ -393,6 +444,12 @@ func (config *ReqConfig) Decide(rp *ReqProfile) string {
 		ret = config.ClientIp.Decide(IpSetFromIp(rp.ClientIp))
 		if ret != "" {
 			return fmt.Sprintf("ClientIp: %s", ret)
+		}
+	}
+	if !rp.HopIp.IsUnspecified() && !rp.HopIp.IsLoopback() && !rp.HopIp.IsPrivate() {
+		ret = config.HopIp.Decide(IpSetFromIp(rp.HopIp))
+		if ret != "" {
+			return fmt.Sprintf("HopIp: %s", ret)
 		}
 	}
 

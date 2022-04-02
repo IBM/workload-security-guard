@@ -2,6 +2,7 @@ import React, {useEffect} from "react";
 import TreeItem from '@mui/lab/TreeItem';
 import { KeyVal } from './KeyVal';
 import {Toggle} from './Guardian'
+import {FormHelperText} from '@mui/material';
 
 
 function Qs(props) {
@@ -19,6 +20,7 @@ function Qs(props) {
 
 return (
     <TreeItem nodeId={nodeId} label={name} sx={{ textAlign: "start"}}> 
+        <FormHelperText>Specification of the Query String</FormHelperText>
         <KeyVal data={data.kv} nodeId={nodeId+">KeyVal"} name="KeyVal"  onDataChange={handleKvChange}></KeyVal>
     </TreeItem>
     )

@@ -3,7 +3,7 @@ import TreeItem from '@mui/lab/TreeItem';
 import { SimpleVal } from "./SimpleVal";
 import {SelectKeyDialog} from "./SelectKeyDialog";
 import {AddKeyDialog} from './AddKeyDialog';
-import {IconButton, Divider} from '@mui/material';
+import {IconButton, Divider, FormHelperText} from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import RemoveRoundedIcon from '@mui/icons-material/RemoveRounded';
 import {Toggle} from './Guardian'
@@ -71,6 +71,7 @@ function KeyVal(props) {
       <TreeItem nodeId={nodeId} label={name}>
         <SelectKeyDialog open={delkeyOpen} name="Key to delete" data ={Object.keys(data.vals)} onClose={onSelectKey} ></SelectKeyDialog>
         <AddKeyDialog open={newkeyOpen} data ={Object.keys(data.vals)} onClose={onNewKey} ></AddKeyDialog>
+        <FormHelperText>Named Keys (per key specificcation of the allowed value)</FormHelperText>
         {res}
         <Divider>
            <IconButton color="primary" aria-label="Add Key" onClick={handleValAdd}>
@@ -80,10 +81,10 @@ function KeyVal(props) {
                 <RemoveRoundedIcon />
             </IconButton>
         </Divider>
+        <FormHelperText>Unnamed Keys (specifications for other allowed keynames and their respective values)</FormHelperText>
         <SimpleVal data={data.otherVals} nodeId={nodeId+">OtherVals"} keyId="otherVals" name="Other Vals" onDataChange={onOtherValsChange}></SimpleVal>
         <SimpleVal data={data.otherKeynames} nodeId={nodeId+">OtherKeynames"} keyId="otherKeynames" name="Other Keynames" onDataChange={onOtherKeynamesChange}></SimpleVal>
       </TreeItem>
- 
         );
 }
 

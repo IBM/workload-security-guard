@@ -9,12 +9,12 @@ function Process(props) {
   var { data, onDataChange, nodeId, name } = props;
   if (!data.responsetime) data.responsetime = []
   if (!data.completiontime) data.completiontime = []
-  if (!data.tcp4peers) data.tcp4peers = {}
-	if (!data.udp4peers) data.udp4peers = {}
-	if (!data.udplite4peers) data.udplite4peers = {}
-	if (!data.tcp6peers) data.tcp6peers = {}
-	if (!data.udp6peers) data.udp6peers = {}
-	if (!data.udplite6peers) data.udplite6peers = {}
+  if (!data.tcp4peers) data.tcp4peers = []
+	if (!data.udp4peers) data.udp4peers = []
+	if (!data.udplite4peers) data.udplite4peers = []
+	if (!data.tcp6peers) data.tcp6peers = []
+	if (!data.udp6peers) data.udp6peers = []
+	if (!data.udplite6peers) data.udplite6peers = []
 
   useEffect(() => {
     Toggle([nodeId+">responsetime", nodeId+">completiontime"])

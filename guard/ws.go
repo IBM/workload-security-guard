@@ -25,7 +25,7 @@ func processPile(w http.ResponseWriter, req *http.Request) {
 	// Add security to ensure that only gate can use this interface!
 	// Check that the source is from the local 10.*.*.* range
 	// Check that the
-	var pile spec.ReqPile
+	var pile spec.Pile
 	query := req.URL.Query()
 	sidSlice := query["sid"]
 	nsSlice := query["ns"]

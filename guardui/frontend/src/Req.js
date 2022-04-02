@@ -6,6 +6,8 @@ import { Subnets } from './Subnets';
 import { U8MinmaxSlice } from './U8MinmaxSlice';
 import { Url } from './Url';
 import { Qs } from './Qs';
+import { Selection } from './Selection';
+
 import { Headers } from './Headers';
 import {Toggle} from './Guardian'
 
@@ -18,7 +20,7 @@ function Req(props) {
   if (!data.contentlength) data.contentlength = []  
   if (!data.method) data.method = {}
   if (!data.proto) data.proto = {}
-  if (!data.cip) data.cip = {}
+  if (!data.cip) data.cip = []
 
   useEffect(() => {
     Toggle([nodeId+">Url", nodeId+">Qs", nodeId+">Headers"])
@@ -56,12 +58,15 @@ function Req(props) {
     console.log("handleCipChange", data)  
     onDataChange(data)
   };
+  var methods = ["Get", "Post", "Put", "Head", "Patch", "Delete", "Connect", "Options", "Trace" ]
+  var protocols = ["HTTP/1.0", "HTTP/1.1",  "HTTP/2"]
+
 return (
     <TreeItem nodeId={nodeId} label={name} sx={{ textAlign: "start"}}>
-        <Set data={data.method} nodeId={nodeId+">Method"} name="Method" onDataChange={handleMethodChange}></Set>    
-        <Set data={data.proto} nodeId={nodeId+">Proto"} name="Proto" onDataChange={handleProtoChange}></Set>    
+        <Selection data={data.method} nodeId={nodeId+">Method"} name="Method" selection={methods} onDataChange={handleMethodChange}></Selection>
+        <Selection data={data.proto} nodeId={nodeId+">Proto"} name="Proto" selection={protocols} onDataChange={handleProtoChange}></Selection>
         <Subnets data={data.cip} nodeId={nodeId+">Cip"} name="Client Ip" onDataChange={handleCipChange}></Subnets>    
-        <U8MinmaxSlice data={data.contentlength} nodeId={nodeId+">ContentLength"} name="Content Length (2 to the power)" onDataChange={handleContentLengthChange}></U8MinmaxSlice>    
+        <U8MinmaxSlice data={data.contentlength} nodeId={nodeId+">ContentLength"} name="Content Length" description="Range of the allowed content in powers of 2 (range is 2^min - 2^max)" onDataChange={handleContentLengthChange}></U8MinmaxSlice>    
         <Url data={data.url} nodeId={nodeId+">Url"} name="Url" onDataChange={handleUrlChange}></Url>
         <Qs data={data.qs} nodeId={nodeId+">Qs"} name="Qs" onDataChange={handleQsChange}></Qs>
         <Headers data={data.headers} nodeId={nodeId+">Headers"} name="Headers" onDataChange={handleHeadersChange}></Headers>
@@ -69,4 +74,5 @@ return (
     )
 }
 export {Req}
-  
+//<Set data={data.proto} nodeId={nodeId+">Proto"} name="Proto" onDataChange={handleProtoChange}></Set>    
+          

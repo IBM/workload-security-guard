@@ -99,8 +99,14 @@ func TestProfileSimpleVals(t *testing.T) {
 		if svp.Flags != flags1 {
 			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags1)
 		}
-		if svp.Runes != 255 {
-			t.Errorf("ProfileSimpleVal() Runes = %v, want %v", svp.Runes, 255)
+		if svp.Spaces != 255 {
+			t.Errorf("ProfileSimpleVal() Spaces = %v, want %v", svp.Spaces, 255)
+		}
+		if svp.NonReadables != 255 {
+			t.Errorf("ProfileSimpleVal() NonReadables = %v, want %v", svp.NonReadables, 255)
+		}
+		if svp.Unicodes != 255 {
+			t.Errorf("ProfileSimpleVal() Unicodes = %v, want %v", svp.Unicodes, 255)
 		}
 		if svp.Letters != 255 {
 			t.Errorf("ProfileSimpleVal() Letters = %v, want %v", svp.Letters, 255)
@@ -111,12 +117,15 @@ func TestProfileSimpleVals(t *testing.T) {
 		if svp.SpecialChars != 11 {
 			t.Errorf("ProfileSimpleVal() SpecialChars = %v, want %v", svp.SpecialChars, 255)
 		}
-		if svp.Words != 255 {
-			t.Errorf("ProfileSimpleVal() Words = %v, want %v", svp.Words, 101)
+		if svp.Sequences != 255 {
+			t.Errorf("ProfileSimpleVal() Sequences = %v, want %v", svp.Sequences, 103)
 		}
-		if svp.Numbers != 255 {
-			t.Errorf("ProfileSimpleVal() Numbers = %v, want %v", svp.Numbers, 2)
-		}
+		//if svp.Words != 255 {
+		//	t.Errorf("ProfileSimpleVal() Words = %v, want %v", svp.Words, 101)
+		//}
+		//if svp.Numbers != 255 {
+		//	t.Errorf("ProfileSimpleVal() Numbers = %v, want %v", svp.Numbers, 2)
+		//}
 	})
 	for c := 0; c < 257; c++ {
 		r := rune(c)
@@ -167,8 +176,8 @@ func TestProfileSimpleVals(t *testing.T) {
 			if svp.Flags != flags {
 				t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
 			}
-			if svp.Runes != 1 {
-				t.Errorf("ProfileSimpleVal() Runes = %d instead of 1", svp.Runes)
+			if svp.Spaces != 1 {
+				t.Errorf("ProfileSimpleVal() Spaces = %d instead of 1", svp.Spaces)
 			}
 			if svp.Letters != uint8(letterCounter) {
 				t.Errorf("ProfileSimpleVal() Letters = %d instead of %d", svp.Letters, letterCounter)
@@ -238,8 +247,8 @@ func TestProfileSimpleVals(t *testing.T) {
 		if svp.Flags != flags {
 			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
 		}
-		if svp.Runes != uint8(len([]rune(str2))) {
-			t.Errorf("ProfileSimpleVal() Runes = %d, want %d", svp.Runes, uint8(len([]rune(str2))))
+		if svp.Spaces != uint8(len([]rune(str2))) {
+			t.Errorf("ProfileSimpleVal() Spaces = %d, want %d", svp.Spaces, uint8(len([]rune(str2))))
 		}
 		if svp.UnicodeFlags == nil || len(svp.UnicodeFlags) != len(unicode) || svp.UnicodeFlags[len(svp.UnicodeFlags)-1] != unicode[len(unicode)-1] {
 			t.Errorf("ProfileSimpleVal() UnicodeFlags = %v", svp.UnicodeFlags)
@@ -254,8 +263,8 @@ func TestProfileSimpleVals(t *testing.T) {
 		if svp.Flags != flags {
 			t.Errorf("ProfileSimpleVal() Flags = %s, want %s", svp.NameFlags(), NameFlags(flags))
 		}
-		if svp.Runes != uint8(len([]rune(str3))) {
-			t.Errorf("ProfileSimpleVal() Runes = %d, want %d", svp.Runes, uint8(len([]rune(str3))))
+		if svp.Spaces != uint8(len([]rune(str3))) {
+			t.Errorf("ProfileSimpleVal() Spaces = %d, want %d", svp.Spaces, uint8(len([]rune(str3))))
 		}
 		if svp.SpecialChars != uint8(len([]rune(str3))) {
 			t.Errorf("ProfileSimpleVal() SpecialChars = %d, want %d %v", svp.SpecialChars, uint8(len([]rune(str3))), svp)
@@ -274,8 +283,8 @@ func TestProfileSimpleVals(t *testing.T) {
 		if svp.Flags != flags {
 			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
 		}
-		if svp.Runes != uint8(len([]rune(str4))) {
-			t.Errorf("ProfileSimpleVal() Runes = %d, want %d", svp.Runes, uint8(len([]rune(str4))))
+		if svp.Spaces != uint8(len([]rune(str4))) {
+			t.Errorf("ProfileSimpleVal() Spaces = %d, want %d", svp.Spaces, uint8(len([]rune(str4))))
 		}
 		if svp.Digits != uint8(len([]rune(str4))) {
 			t.Errorf("ProfileSimpleVal() Digits = %d, want %d", svp.Digits, uint8(len([]rune(str4))))
@@ -294,8 +303,8 @@ func TestProfileSimpleVals(t *testing.T) {
 		if svp.Flags != flags {
 			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
 		}
-		if svp.Runes != uint8(len([]rune(str5))) {
-			t.Errorf("ProfileSimpleVal() BasicTotalCounter = %d, want %d", svp.Runes, uint8(len([]rune(str5))))
+		if svp.Spaces != uint8(len([]rune(str5))) {
+			t.Errorf("ProfileSimpleVal() Spaces = %d, want %d", svp.Spaces, uint8(len([]rune(str5))))
 		}
 		if svp.Letters != uint8(len([]rune(str5))) {
 			t.Errorf("ProfileSimpleVal() Letters = %d, want %d", svp.Letters, uint8(len([]rune(str5))))
@@ -315,8 +324,8 @@ func TestProfileSimpleVals(t *testing.T) {
 		if svp.Flags != flags {
 			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
 		}
-		if svp.Runes != uint8(len([]rune(str6))) {
-			t.Errorf("ProfileSimpleVal() Runes = %d, want %d", svp.Runes, uint8(len([]rune(str6))))
+		if svp.Spaces != uint8(len([]rune(str6))) {
+			t.Errorf("ProfileSimpleVal() Spaces = %d, want %d", svp.Spaces, uint8(len([]rune(str6))))
 		}
 		if svp.UnicodeFlags == nil || len(svp.UnicodeFlags) != 1 || svp.UnicodeFlags[0] != 1 {
 			t.Errorf("ProfileSimpleVal() expected UnicodeFlags %v received %v!", unicode, svp.UnicodeFlags)
@@ -339,24 +348,30 @@ func TestProfileSimpleVals(t *testing.T) {
 		if svp.Flags != flags {
 			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
 		}
-		if svp.Runes != uint8(len([]rune(str6))) {
-			t.Errorf("ProfileSimpleVal() Runes = %d, want %d", svp.Runes, uint8(len([]rune(str6))))
+		if svp.Spaces != uint8(len([]rune(str6))) {
+			t.Errorf("ProfileSimpleVal() Spaces = %d, want %d", svp.Spaces, uint8(len([]rune(str6))))
 		}
-		if svp.Words != uint8(len([]rune(str6))) {
-			t.Errorf("ProfileSimpleVal() Words = %d, want %d", svp.Words, uint8(len([]rune(str6))))
+		if svp.Sequences != uint8(len([]rune(str6))) {
+			t.Errorf("ProfileSimpleVal() Sequences = %d, want %d", svp.Sequences, uint8(len([]rune(str6))))
 		}
-		if svp.Digits != uint8(len([]rune(str6))) {
-			t.Errorf("ProfileSimpleVal() Digits = %d, want %d", svp.Digits, uint8(len([]rune(str6))))
-		}
+		//if svp.Words != uint8(len([]rune(str6))) {
+		//	t.Errorf("ProfileSimpleVal() Words = %d, want %d", svp.Words, uint8(len([]rune(str6))))
+		//}
+		//if svp.Digits != uint8(len([]rune(str6))) {
+		//	t.Errorf("ProfileSimpleVal() Digits = %d, want %d", svp.Digits, uint8(len([]rune(str6))))
+		//}
 		if svp.SpecialChars != uint8(len([]rune(str6))) {
 			t.Errorf("ProfileSimpleVal() SpecialChars = %d, want %d", svp.SpecialChars, uint8(len([]rune(str6))))
 		}
-		if svp.Words != uint8(len([]rune(str6))) {
-			t.Errorf("ProfileSimpleVal() Words = %d, want %d", svp.Words, uint8(len([]rune(str6))))
+		if svp.Sequences != uint8(len([]rune(str6))) {
+			t.Errorf("ProfileSimpleVal() Sequences = %d, want %d", svp.Sequences, uint8(len([]rune(str6))))
 		}
-		if svp.Numbers != uint8(len([]rune(str6))) {
-			t.Errorf("ProfileSimpleVal() Numbers = %d, want %d", svp.Numbers, uint8(len([]rune(str6))))
-		}
+		//if svp.Words != uint8(len([]rune(str6))) {
+		//	t.Errorf("ProfileSimpleVal() Words = %d, want %d", svp.Words, uint8(len([]rune(str6))))
+		//}
+		//if svp.Numbers != uint8(len([]rune(str6))) {
+		//	t.Errorf("ProfileSimpleVal() Numbers = %d, want %d", svp.Numbers, uint8(len([]rune(str6))))
+		//}
 		if svp.UnicodeFlags == nil || len(svp.UnicodeFlags) != 1 || svp.UnicodeFlags[0] != 1 {
 			t.Errorf("ProfileSimpleVal() expected UnicodeFlags %v received %v!", unicode, svp.UnicodeFlags)
 		}

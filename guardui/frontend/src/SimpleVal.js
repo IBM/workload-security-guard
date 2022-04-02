@@ -15,14 +15,20 @@ function SimpleVal(props) {
   if (!data.letters) data.letters = []
   if (!data.runes) data.runes = []
   if (!data.schars) data.schars = []
-  if (!data.numbers) data.numbers = []
-  if (!data.words) data.words = []
+  if (!data.spaces) data.spaces = []
+  if (!data.unicodes) data.unicodes = []
+  if (!data.nonreadables) data.nonreadables = []
+  if (!data.sequences) data.sequences = []
+  
+
+  //if (!data.numbers) data.numbers = []
+  //if (!data.words) data.words = []
   if (!data.flags) data.flags = 0
   if (!data.unicodeFlags) data.unicodeFlags = []
 
   useEffect(() => {
-    Toggle([nodeId+">Digits", nodeId+">Letters", nodeId+">Runes", nodeId+">Special Chars", 
-            nodeId+">Numbers", nodeId+">Words", nodeId+">Flags", nodeId+">Unicodes"])
+    Toggle([nodeId+">Digits", nodeId+">Letters", nodeId+">Spaces", nodeId+">Special Chars", 
+            nodeId+">Sequences",  nodeId+">Unicodes",  nodeId+">NonReadables", nodeId+">Flags", nodeId+">UnicodeTypes"])
   }, [nodeId]);
 
   function onDigitsChange(d) {
@@ -35,33 +41,53 @@ function SimpleVal(props) {
     console.log("onLettersChange", d, data)
     onDataChange(keyId,data)
   }
-  function onRunesChange(d) {
-    data.runes = d 
-    console.log("onRunesChange", d, data)
-    onDataChange(keyId,data)
-  }
-  function onSCharsChange(d) {
+  //function onRunesChange(d) {
+  //  data.runes = d 
+  //  console.log("onRunesChange", d, data)
+  //  onDataChange(keyId,data)
+  //}
+  function onSpecialCharsChange(d) {
     data.schars = d 
     console.log("onSCharsChange", d, data)
     onDataChange(keyId,data)
   }
-  function onNumbersChange(d) {
-    data.numbers = d 
-    console.log("onNumbersChange", d, data)
+  function onSequencesChange(d) {
+    data.sequences = d 
+    console.log("onSequencesChange", d, data)
     onDataChange(keyId,data)
   }
-  function onWordsChange(d) {
-    data.words = d 
-    console.log("onWordsChange", d, data)
-    onDataChange(keyId,data)
-  }
+  //function onNumbersChange(d) {
+  //  data.numbers = d 
+  //  console.log("onNumbersChange", d, data)
+  //  onDataChange(keyId,data)
+  //}
+  //function onWordsChange(d) {
+  //  data.words = d 
+  //  console.log("onWordsChange", d, data)
+  //  onDataChange(keyId,data)
+  //}
   function onFlagsChange(d) {
     data.flags = d 
     console.log("onFlagsChange", d, data)
     onDataChange(keyId,data)
   }
-  function onUnicodesChange(d) {
+  function onUnicodeTypesChange(d) {
     data.unicodeFlags = d 
+    console.log("onUnicodesChange", d, data)
+    onDataChange(keyId,data)
+  }
+  function onSpacesChange(d) {
+    data.spaces = d 
+    console.log("onSpacesChange", d, data)
+    onDataChange(keyId,data)
+  }
+  function onNonReadablesChange(d) {
+    data.nonreadables = d 
+    console.log("onNonReadablesChange", d, data)
+    onDataChange(keyId,data)
+  }
+  function onUnicodesChange(d) {
+    data.unicodes = d 
     console.log("onUnicodesChange", d, data)
     onDataChange(keyId,data)
   }
@@ -72,14 +98,17 @@ function SimpleVal(props) {
   
     
       <TreeItem nodeId={nodeId} label={name}>
-        <U8MinmaxSlice data={data.digits} nodeId={nodeId+">Digits"} name="Digits" onDataChange={onDigitsChange}></U8MinmaxSlice>
-        <U8MinmaxSlice data={data.letters} nodeId={nodeId+">Letters"} name="Letters" onDataChange={onLettersChange}></U8MinmaxSlice>
-        <U8MinmaxSlice data={data.runes} nodeId={nodeId+">Runes"} name="Runes" onDataChange={onRunesChange}></U8MinmaxSlice>
-        <U8MinmaxSlice data={data.schars} nodeId={nodeId+">Special Chars"} name="Special Chars" onDataChange={onSCharsChange}></U8MinmaxSlice>
-        <U8MinmaxSlice data={data.numbers} nodeId={nodeId+">Numbers"} name="Numbers" onDataChange={onNumbersChange}></U8MinmaxSlice>
-        <U8MinmaxSlice data={data.words} nodeId={nodeId+">Words"} name="Words" onDataChange={onWordsChange}></U8MinmaxSlice>
-        <FlagsSlice data={data.flags} nodeId={nodeId+">Flags"} name="Flags" onDataChange={onFlagsChange}></FlagsSlice>
-        <UnicodeSlice data={data.unicodeFlags} nodeId={nodeId+">Unicodes"} name="Unicodes" onDataChange={onUnicodesChange}></UnicodeSlice>
+        <TreeItem nodeId={nodeId+">Counters"} label={"Rune Counters"}>
+          <U8MinmaxSlice data={data.digits} nodeId={nodeId+">Digits"} name="Digits 0-9" description="Number of digits (runes 0-9)" onDataChange={onDigitsChange}></U8MinmaxSlice>
+          <U8MinmaxSlice data={data.letters} nodeId={nodeId+">Letters"} name="Letters A-Z a-z" description="Number of letters (runes A-Z a-z)" onDataChange={onLettersChange}></U8MinmaxSlice>
+          < U8MinmaxSlice data={data.runes} nodeId={nodeId+">Spaces"} name="Spaces" description="Number of space runes" onDataChange={onSpacesChange}></U8MinmaxSlice>
+          <U8MinmaxSlice data={data.schars} nodeId={nodeId+">SpecialChars"} name="Special Chars" description="Number of Special Charcter runes" onDataChange={onSpecialCharsChange}></U8MinmaxSlice>
+          <U8MinmaxSlice data={data.unicodes} nodeId={nodeId+">Unicodes"} name="Unicodes" description="Number of Unicode runes" onDataChange={onUnicodesChange}></U8MinmaxSlice>
+          <U8MinmaxSlice data={data.nonreadables} nodeId={nodeId+">NonReadables"} name="Non Readables" description="Number of Non Readable runes" onDataChange={onNonReadablesChange}></U8MinmaxSlice>
+        </TreeItem>
+        <U8MinmaxSlice data={data.sequences} nodeId={nodeId+">Sequences"} name="Sequences" description="Number of sequances of runes of the same type (e.g. letters: aabc digits: 987 special chars: !?!)" onDataChange={onSequencesChange}></U8MinmaxSlice>
+        <FlagsSlice data={data.flags} nodeId={nodeId+">Flags"} name="Special Char Types" onDataChange={onFlagsChange}></FlagsSlice>
+        <UnicodeSlice data={data.unicodeFlags} nodeId={nodeId+">UnicodeTypes"} name="Unicode Types" onDataChange={onUnicodeTypesChange}></UnicodeSlice>
       </TreeItem>
  
         );

@@ -35,6 +35,10 @@ func (p *KeyValPile) Add(kv *KeyValProfile) {
 	}
 }
 
+func (p *KeyValPile) Clear() {
+	p.Vals = make(map[string]*SimpleValPile)
+}
+
 // Profile a generic map of key vals where we expect:
 // keys belonging to some contstant list of keys
 // vals have some defined charactaristics

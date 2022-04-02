@@ -11,12 +11,12 @@ import (
 type ProcessPile struct {
 	ResponseTime   []uint8 `json:"responsetime"`
 	CompletionTime []uint8 `json:"completiontime"`
-	Tcp4Peers      *IpSet  `json:"tcp4peers"`     // from /proc/net/tcp
-	Udp4Peers      *IpSet  `json:"udp4peers"`     // from /proc/net/udp
-	Udplite4Peers  *IpSet  `json:"udplite4peers"` // from /proc/udpline
-	Tcp6Peers      *IpSet  `json:"tcp6peers"`     // from /proc/net/tcp6
-	Udp6Peers      *IpSet  `json:"udp6peers"`     // from /proc/net/udp6
-	Udplite6Peers  *IpSet  `json:"udplite6peers"` // from /proc/net/udpline6
+	Tcp4Peers      IpPile  `json:"tcp4peers"`     // from /proc/net/tcp
+	Udp4Peers      IpPile  `json:"udp4peers"`     // from /proc/net/udp
+	Udplite4Peers  IpPile  `json:"udplite4peers"` // from /proc/udpline
+	Tcp6Peers      IpPile  `json:"tcp6peers"`     // from /proc/net/tcp6
+	Udp6Peers      IpPile  `json:"udp6peers"`     // from /proc/net/udp6
+	Udplite6Peers  IpPile  `json:"udplite6peers"` // from /proc/net/udpline6
 }
 
 type ProcessConfig struct {
@@ -48,6 +48,28 @@ type ProcessProfile struct {
 	FdCount      uint32        `json:"fdcount"`      // from /proc/<PID>/fd - require ssh to container
 	IoRchar      KeyValProfile `json:"iorchar"`      // from /proc/<PID>/io - cycled on 32 bits - require ssh to container
 	IoWchar      KeyValProfile `json:"iowchar"`      // from /proc/<PID>/io - cycled on 32 bits - require ssh to container
+}
+
+func (p *ProcessPile) Add(pp *ProcessProfile) {
+	p.CompletionTime = append(p.CompletionTime, pp.CompletionTime)
+	p.ResponseTime = append(p.ResponseTime, pp.ResponseTime)
+	p.Tcp4Peers.Add(pp.Tcp4Peers)
+	p.Udp4Peers.Add(pp.Udp4Peers)
+	p.Udplite4Peers.Add(pp.Udplite4Peers)
+	p.Tcp6Peers.Add(pp.Tcp6Peers)
+	p.Udp6Peers.Add(pp.Udp6Peers)
+	p.Udplite6Peers.Add(pp.Udplite6Peers)
+}
+
+func (p *ProcessPile) Clear() {
+	p.CompletionTime = make([]uint8, 1)
+	p.ResponseTime = make([]uint8, 1)
+	p.Tcp4Peers.Clear()
+	p.Udp4Peers.Clear()
+	p.Udplite4Peers.Clear()
+	p.Tcp6Peers.Clear()
+	p.Udp6Peers.Clear()
+	p.Udplite6Peers.Clear()
 }
 
 func (config *ProcessConfig) Normalize() {

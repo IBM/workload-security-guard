@@ -8,12 +8,11 @@ import {AddKeyDialog} from './AddKeyDialog';
 import { styled } from '@mui/material/styles';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
+import {FormHelperText} from '@mui/material';
 
 const ListItem = styled('li')(({ theme }) => ({
   margin: theme.spacing(0.5),
 }));
-
-
 
 
 function Subnets(props) {
@@ -81,13 +80,31 @@ function Subnets(props) {
                                 '|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}' +
                                 '|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})' +
                                 '|:((:[0-9a-fA-F]{1,4}){1,7}|:)' +
-                            ')\/(12[0-8]|((1[01]|[1-9]|)[0-9]))$') 
+                            ')/(12[0-8]|((1[01]|[1-9]|)[0-9]))$') 
        
+    }
+    var subnets 
+    if (keys.length>0) { 
+        subnets = keys.map((key) => {
+            let icon;
+            return (
+            <ListItem key={key}>
+                <Chip
+                icon={icon}
+                label={key}
+                onDelete={handleDelete(key)}
+                />
+            </ListItem>
+            );
+        })
+    } else {
+        subnets = "No Subnets"
     }
     return (
        <TreeItem nodeId={nodeId} label={name}>
             <SelectKeyDialog open={delkeyOpen} name="Key to delete" data ={Object.keys(value)} onClose={onSelectKey} ></SelectKeyDialog>
             <AddKeyDialog open={newkeyOpen} data ={Object.keys(value)} regex={cidr} title={"Add Subnet"} onClose={onNewKey} ></AddKeyDialog>
+            <FormHelperText>Allowed subnets:</FormHelperText>
             <Paper sx={{
                     display: 'flex',
                     justifyContent: 'center',
@@ -98,19 +115,7 @@ function Subnets(props) {
                 }}
                 component="ul"
             >
-                {keys.map((key) => {
-                    let icon;
-
-                    return (
-                    <ListItem key={key}>
-                        <Chip
-                        icon={icon}
-                        label={key}
-                        onDelete={handleDelete(key)}
-                        />
-                    </ListItem>
-                    );
-                })}
+                {subnets}
                 </Paper>
             <Divider>
             <IconButton color="primary" aria-label="Add Key" onClick={handleValAdd}>

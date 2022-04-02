@@ -57,7 +57,7 @@ type plug struct {
 	numConsultsCount    uint16
 	httpc               http.Client
 	cycle               int
-	allowedPile         spec.ReqPile
+	allowedPile         spec.Pile
 }
 
 func GetMD5Hash(text string) string {
@@ -146,7 +146,8 @@ func (p *plug) screenRequest(req *http.Request) error {
 	}
 	if decission == "" {
 		if ctrl.Learn {
-			p.reportAllow(rp)
+			p.allowedPile.Req.Add(rp)
+			p.reportAllow()
 		}
 	} else {
 		pi.Log.Infof("Alert HttpRequest: %s", decission)
@@ -295,6 +296,30 @@ func (p *plug) screenRequest(req *http.Request) error {
 }
 
 func (p *plug) screenResponse(resp *http.Response) error {
+	rp := new(spec.RespProfile)
+	rp.Profile(resp)
+	fmt.Println(rp.Marshal(0))
+	fmt.Println(p.wsGate.Configured)
+	ctrl := p.wsGate.Control
+	var decission string
+	if ctrl.Auto {
+		decission = p.wsGate.Learned.Resp.Decide(rp)
+	} else {
+		decission = p.wsGate.Configured.Resp.Decide(rp)
+	}
+	if decission == "" {
+		if ctrl.Learn {
+			p.allowedPile.Resp.Add(rp)
+			p.reportAllow()
+		}
+	} else {
+		pi.Log.Infof("Alert HttpResponse: %s", decission)
+		//p.reportBlock(rp, decission)
+		//if !p.wsGate.Control.Block {
+		//	return errors.New(decission)
+		//}
+	}
+
 	return nil
 }
 
@@ -362,9 +387,10 @@ func (p *plug) periodical(ctx context.Context) bool {
 		decission = p.wsGate.Configured.Process.Decide(pp)
 	}
 	if decission == "" {
-		//if ctrl.Learn {
-		//	p.reportAllow(pp)
-		//}
+		if ctrl.Learn {
+			p.allowedPile.Process.Add(pp)
+			p.reportAllow()
+		}
 	} else {
 		pi.Log.Infof("Alert while processing: %s", decission)
 		//p.reportBlock(pp, decission)
@@ -401,6 +427,12 @@ func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 	newCtx = context.WithValue(newCtx, ctxKey("ReqTime"), time.Now())
 	req = req.WithContext(newCtx)
 
+	if p.periodical(newCtx) {
+		pi.Log.Infof("Blocked on periodical during reuqest!")
+		cancelFunction()
+		return nil, errors.New("secuirty blocked")
+	}
+
 	timeoutStr := req.Header.Get("X-Block-Async")
 	timeout, err := time.ParseDuration(timeoutStr)
 	if err != nil {
@@ -417,7 +449,7 @@ func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 	}
 
 	pi.Log.Infof("%s ........... will asynchroniously block after %s", p.name, timeoutStr)
-	p.periodical(newCtx)
+
 	go func(newCtx context.Context, cancelFunction context.CancelFunc, req *http.Request, timeout time.Duration) {
 		ticker := time.NewTicker(5 * time.Second)
 		for {
@@ -527,8 +559,8 @@ func (p *plug) consultOnRequest(reqProfile *spec.ReqProfile) string {
 	return ""
 }
 
-func (p *plug) reportAllowedPile(reqPile *spec.ReqPile) string {
-	postBody, marshalErr := json.Marshal(reqPile)
+func (p *plug) reportAllowedPile(pile *spec.Pile) string {
+	postBody, marshalErr := json.Marshal(pile)
 	if marshalErr != nil {
 		log.Printf("reportAllowedPile error during marshal: %v", marshalErr)
 		return fmt.Sprintf("Cant marshal in reportAllowedPile %v", marshalErr)
@@ -576,14 +608,13 @@ func (p *plug) reportBlock(req *spec.ReqProfile, decission string) {
 	}
 }
 
-func (p *plug) reportAllow(req *spec.ReqProfile) {
-	// build statistics on allowed requests
-	p.allowedPile.Add(req)
-	p.reportAllowedPile(&p.allowedPile)
+func (p *plug) reportAllow() {
+	// send statistics on allowed requests
 	p.cycle--
 	if p.cycle <= 0 {
-		//p.ReportToGuard()
-		p.cycle = 100
+		p.reportAllowedPile(&p.allowedPile)
+		p.allowedPile.Clear()
+		p.cycle = 0
 	}
 }
 

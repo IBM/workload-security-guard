@@ -8,11 +8,29 @@ import (
 	"strconv"
 )
 
+type IpPile struct {
+	List []string
+	m    map[string]bool
+}
+
 type IpnetSet []net.IPNet
 
 type IpSet struct {
-	m map[string]bool
-	s []net.IP
+	list []net.IP
+	m    map[string]bool
+}
+
+func (ipp *IpPile) Add(ips *IpSet) {
+	for ip := range ips.m {
+		if !ipp.m[ip] {
+			ipp.m[ip] = true
+			ipp.List = append(ipp.List, ip)
+		}
+	}
+}
+func (ipp *IpPile) Clear() {
+	ipp.m = make(map[string]bool)
+	ipp.List = make([]string, 1)
 }
 
 func (ipnets IpnetSet) Decide(ips *IpSet) string {
@@ -20,7 +38,8 @@ func (ipnets IpnetSet) Decide(ips *IpSet) string {
 	if ips == nil {
 		return ""
 	}
-	for _, ip := range ips.s {
+	fmt.Printf("func (%v) Decide(%v)\n", ipnets, ips)
+	for _, ip := range ips.list {
 		ok = false
 		for _, subnet := range ipnets {
 			if subnet.Contains(ip) {
@@ -127,9 +146,9 @@ func nextForignIp(data []byte) (remoteIp net.IP, moreData []byte) {
 func IpSetFromIp(ip net.IP) (ips *IpSet) {
 	ips = new(IpSet)
 	ips.m = make(map[string]bool)
-	ips.s = make([]net.IP, 1)
+	ips.list = make([]net.IP, 1)
 	ips.m[ip.String()] = true
-	ips.s[0] = ip
+	ips.list[0] = ip
 	return
 }
 
@@ -139,7 +158,7 @@ func IpSetFromProc(protocol string) (ips *IpSet) {
 	if err != nil {
 		fmt.Printf("error while reading %s: %s\n", procfile, err.Error())
 		// Used for development and debugging on macos - remove TODO
-		procfile = "/tmp" + procfile
+		procfile = "/Users/davidhadasmac16" + procfile
 		data, err = ioutil.ReadFile(procfile)
 		if err != nil {
 			fmt.Println(err)
@@ -155,10 +174,10 @@ func IpSetFromProc(protocol string) (ips *IpSet) {
 		ips.m[ip.String()] = true
 		ip, data = nextForignIp(data)
 	}
-	ips.s = make([]net.IP, len(ips.m))
+	ips.list = make([]net.IP, len(ips.m))
 	i := 0
 	for ipstr := range ips.m {
-		ips.s[i] = net.ParseIP(ipstr)
+		ips.list[i] = net.ParseIP(ipstr)
 	}
 	return
 }
