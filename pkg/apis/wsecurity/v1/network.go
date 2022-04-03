@@ -173,7 +173,9 @@ func IpSetFromProc(protocol string) (ips *IpSet) {
 	ips.m = make(map[string]bool)
 	ip, data := nextForignIp(data)
 	for data != nil {
-		ips.m[ip.String()] = true
+		if ip != nil {
+			ips.m[ip.String()] = true
+		}
 		ip, data = nextForignIp(data)
 	}
 	ips.list = make([]net.IP, len(ips.m))
