@@ -13,7 +13,7 @@ function SimpleVal(props) {
   
   if (!data.digits) data.digits = []
   if (!data.letters) data.letters = []
-  if (!data.runes) data.runes = []
+  //if (!data.runes) data.runes = []
   if (!data.schars) data.schars = []
   if (!data.spaces) data.spaces = []
   if (!data.unicodes) data.unicodes = []

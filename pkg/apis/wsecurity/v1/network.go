@@ -30,7 +30,7 @@ func (ipp *IpPile) Add(ips *IpSet) {
 }
 func (ipp *IpPile) Clear() {
 	ipp.m = make(map[string]bool)
-	ipp.List = make([]string, 1)
+	ipp.List = make([]string, 0, 1)
 }
 
 func (ipnets IpnetSet) Decide(ips *IpSet) string {
@@ -146,9 +146,11 @@ func nextForignIp(data []byte) (remoteIp net.IP, moreData []byte) {
 func IpSetFromIp(ip net.IP) (ips *IpSet) {
 	ips = new(IpSet)
 	ips.m = make(map[string]bool)
-	ips.list = make([]net.IP, 1)
+	ips.list = make([]net.IP, 0, 1)
 	ips.m[ip.String()] = true
-	ips.list[0] = ip
+	if ip != nil {
+		ips.list[0] = ip
+	}
 	return
 }
 

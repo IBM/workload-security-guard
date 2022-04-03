@@ -193,15 +193,15 @@ func NameFlags(f uint32) string {
 
 func NewSimpleValConfig(spaces, unicodes, nonreadables, letters, digits, specialChars, sequences uint8) *SimpleValConfig {
 	svc := new(SimpleValConfig)
-	svc.Spaces = make([]U8Minmax, 1)
-	svc.Unicodes = make([]U8Minmax, 1)
-	svc.NonReadables = make([]U8Minmax, 1)
-	svc.Letters = make([]U8Minmax, 1)
-	svc.Digits = make([]U8Minmax, 1)
-	svc.SpecialChars = make([]U8Minmax, 1)
-	svc.Sequences = make([]U8Minmax, 1)
-	//svc.Words = make([]U8Minmax, 1)
-	//svc.Numbers = make([]U8Minmax, 1)
+	svc.Spaces = make([]U8Minmax, 0, 1)
+	svc.Unicodes = make([]U8Minmax, 0, 1)
+	svc.NonReadables = make([]U8Minmax, 0, 1)
+	svc.Letters = make([]U8Minmax, 0, 1)
+	svc.Digits = make([]U8Minmax, 0, 1)
+	svc.SpecialChars = make([]U8Minmax, 0, 1)
+	svc.Sequences = make([]U8Minmax, 0, 1)
+	//svc.Words = make([]U8Minmax, 0, 1)
+	//svc.Numbers = make([]U8Minmax, 0, 1)
 
 	svc.Spaces[0].Max = spaces
 	svc.NonReadables[0].Max = nonreadables

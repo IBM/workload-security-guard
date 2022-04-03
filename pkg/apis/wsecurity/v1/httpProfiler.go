@@ -103,7 +103,7 @@ func (p *UrlPile) Add(u *UrlProfile) {
 }
 
 func (p *UrlPile) Clear() {
-	p.Segments = make([]uint8, 1)
+	p.Segments = make([]uint8, 0, 1)
 	p.Val = new(SimpleValPile)
 }
 
@@ -174,14 +174,14 @@ func (config *UrlConfig) Marshal(depth int) string {
 
 // Allow typical URL values - use for development but not in production
 func (config *UrlConfig) AddTypicalVal() {
-	config.Val.Spaces = make([]U8Minmax, 1)
-	config.Val.Unicodes = make([]U8Minmax, 1)
-	config.Val.NonReadables = make([]U8Minmax, 1)
-	config.Val.Letters = make([]U8Minmax, 1)
-	config.Val.Digits = make([]U8Minmax, 1)
-	config.Val.Sequences = make([]U8Minmax, 1)
-	//config.Val.Words = make([]U8Minmax, 1)
-	//config.Val.Numbers = make([]U8Minmax, 1)
+	config.Val.Spaces = make([]U8Minmax, 0, 1)
+	config.Val.Unicodes = make([]U8Minmax, 0, 1)
+	config.Val.NonReadables = make([]U8Minmax, 0, 1)
+	config.Val.Letters = make([]U8Minmax, 0, 1)
+	config.Val.Digits = make([]U8Minmax, 0, 1)
+	config.Val.Sequences = make([]U8Minmax, 0, 1)
+	//config.Val.Words = make([]U8Minmax, 0, 1)
+	//config.Val.Numbers = make([]U8Minmax, 0, 1)
 
 	config.Val.Spaces[0].Max = 0
 	config.Val.Unicodes[0].Max = 0
@@ -193,7 +193,7 @@ func (config *UrlConfig) AddTypicalVal() {
 	//config.Val.Numbers[0].Max = 16
 	//config.Val.FlagsL = 1 << SlashSlot
 	config.Val.Flags = 1 << SlashSlot
-	config.Segments = make([]U8Minmax, 1)
+	config.Segments = make([]U8Minmax, 0, 1)
 	config.Segments[0].Max = 8
 }
 
@@ -339,10 +339,10 @@ func (p *ReqPile) Add(rp *ReqProfile) {
 }
 
 func (p *ReqPile) Clear() {
-	p.ClientIp = make([]net.IP, 1)
-	p.Method = make([]string, 1)
-	p.Proto = make([]string, 1)
-	p.ContentLength = make([]uint8, 1)
+	p.ClientIp = make([]net.IP, 0, 1)
+	p.Method = make([]string, 0, 1)
+	p.Proto = make([]string, 0, 1)
+	p.ContentLength = make([]uint8, 0, 1)
 	p.Url.Clear()
 	p.Qs.Clear()
 	p.Headers.Clear()
@@ -440,13 +440,13 @@ func (config *ReqConfig) Decide(rp *ReqProfile) string {
 	if ret != "" {
 		return fmt.Sprintf("Headers: %s", ret)
 	}
-	if !rp.ClientIp.IsUnspecified() && !rp.ClientIp.IsLoopback() && !rp.ClientIp.IsPrivate() {
+	if (rp.ClientIp != nil) && !rp.ClientIp.IsUnspecified() && !rp.ClientIp.IsLoopback() && !rp.ClientIp.IsPrivate() {
 		ret = config.ClientIp.Decide(IpSetFromIp(rp.ClientIp))
 		if ret != "" {
 			return fmt.Sprintf("ClientIp: %s", ret)
 		}
 	}
-	if !rp.HopIp.IsUnspecified() && !rp.HopIp.IsLoopback() && !rp.HopIp.IsPrivate() {
+	if (rp.HopIp != nil) && !rp.HopIp.IsUnspecified() && !rp.HopIp.IsLoopback() && !rp.HopIp.IsPrivate() {
 		ret = config.HopIp.Decide(IpSetFromIp(rp.HopIp))
 		if ret != "" {
 			return fmt.Sprintf("HopIp: %s", ret)

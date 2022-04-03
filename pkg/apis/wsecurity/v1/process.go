@@ -62,8 +62,8 @@ func (p *ProcessPile) Add(pp *ProcessProfile) {
 }
 
 func (p *ProcessPile) Clear() {
-	p.CompletionTime = make([]uint8, 1)
-	p.ResponseTime = make([]uint8, 1)
+	p.CompletionTime = make([]uint8, 0, 1)
+	p.ResponseTime = make([]uint8, 0, 1)
 	p.Tcp4Peers.Clear()
 	p.Udp4Peers.Clear()
 	p.Udplite4Peers.Clear()
@@ -162,9 +162,9 @@ func (config *ProcessConfig) Marshal(depth int) string {
 
 // Allow typical values - use for development but not in production
 func (config *ProcessConfig) AddTypicalVal() {
-	config.ResponseTime = make([]U8Minmax, 1)
+	config.ResponseTime = make([]U8Minmax, 0, 1)
 	config.ResponseTime[0].Max = 60
-	config.CompletionTime = make([]U8Minmax, 1)
+	config.CompletionTime = make([]U8Minmax, 0, 1)
 	config.CompletionTime[0].Max = 120
 }
 
