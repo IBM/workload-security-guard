@@ -36,6 +36,16 @@ type WsGate struct {
 	Control    Ctrl      `json:"control"`           // Control
 }
 
+func (g *WsGate) Reconcile() {
+	if g.Configured != nil {
+		g.Configured.Reconcile()
+	}
+	if g.Learned != nil {
+		g.Learned.Reconcile()
+	}
+	g.Control.Reconcile()
+}
+
 func (g *WsGate) Marshal(depth int) string {
 	var description bytes.Buffer
 	shift := strings.Repeat("  ", depth)
@@ -53,6 +63,12 @@ func (g *WsGate) Marshal(depth int) string {
 	description.WriteString(shift)
 	description.WriteString("}\n")
 	return description.String()
+}
+
+func (c *Critiria) Reconcile() {
+	c.Req.Reconcile()
+	c.Resp.Reconcile()
+	c.Process.Reconcile()
 }
 
 func (c *Critiria) Normalize() {
@@ -73,6 +89,10 @@ func (c *Critiria) Marshal(depth int) string {
 	description.WriteString(shift)
 	description.WriteString("}\n")
 	return description.String()
+}
+
+func (c *Ctrl) Reconcile() {
+
 }
 
 func (c *Ctrl) Marshal(depth int) string {

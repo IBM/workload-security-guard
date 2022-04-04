@@ -3,7 +3,6 @@ package v1
 import (
 	"bytes"
 	"fmt"
-	"net"
 	"strings"
 	"time"
 )
@@ -20,14 +19,21 @@ type ProcessPile struct {
 }
 
 type ProcessConfig struct {
+	tcp4Peers     CidrSet
+	udp4Peers     CidrSet
+	udplite4Peers CidrSet
+	tcp6Peers     CidrSet
+	udp6Peers     CidrSet
+	udplite6Peers CidrSet
+
 	ResponseTime   U8MinmaxSlice `json:"responsetime"`
 	CompletionTime U8MinmaxSlice `json:"completiontime"`
-	Tcp4Peers      IpnetSet      `json:"tcp4peers"`     // from /proc/net/tcp
-	Udp4Peers      IpnetSet      `json:"udp4peers"`     // from /proc/net/udp
-	Udplite4Peers  IpnetSet      `json:"udplite4peers"` // from /proc/udpline
-	Tcp6Peers      IpnetSet      `json:"tcp6peers"`     // from /proc/net/tcp6
-	Udp6Peers      IpnetSet      `json:"udp6peers"`     // from /proc/net/udp6
-	Udplite6Peers  IpnetSet      `json:"udplite6peers"` // from /proc/net/udpline6
+	Tcp4Peers      []string      `json:"tcp4peers"`     // from /proc/net/tcp
+	Udp4Peers      []string      `json:"udp4peers"`     // from /proc/net/udp
+	Udplite4Peers  []string      `json:"udplite4peers"` // from /proc/udpline
+	Tcp6Peers      []string      `json:"tcp6peers"`     // from /proc/net/tcp6
+	Udp6Peers      []string      `json:"udp6peers"`     // from /proc/net/udp6
+	Udplite6Peers  []string      `json:"udplite6peers"` // from /proc/net/udpline6
 }
 
 type ProcessProfile struct {
@@ -72,15 +78,26 @@ func (p *ProcessPile) Clear() {
 	p.Udplite6Peers.Clear()
 }
 
+func (config *ProcessConfig) Reconcile() {
+	config.tcp4Peers = GetCidrsFromList(config.Tcp4Peers)
+	fmt.Printf("Reconcile config %v\n", config)
+	fmt.Printf("Reconcile config.tcp4Peers %v\n", config.tcp4Peers)
+	config.udp4Peers = GetCidrsFromList(config.Udp4Peers)
+	config.udplite4Peers = GetCidrsFromList(config.Udplite4Peers)
+	config.tcp6Peers = GetCidrsFromList(config.Tcp6Peers)
+	config.udp6Peers = GetCidrsFromList(config.Udp6Peers)
+	config.udplite6Peers = GetCidrsFromList(config.Udplite6Peers)
+}
+
 func (config *ProcessConfig) Normalize() {
 	config.ResponseTime = append(config.ResponseTime, U8Minmax{0, 0})
 	config.CompletionTime = append(config.CompletionTime, U8Minmax{0, 0})
-	config.Tcp4Peers = make([]net.IPNet, 0)
-	config.Udp4Peers = make([]net.IPNet, 0)
-	config.Udplite4Peers = make([]net.IPNet, 0)
-	config.Tcp6Peers = make([]net.IPNet, 0)
-	config.Udp6Peers = make([]net.IPNet, 0)
-	config.Udplite6Peers = make([]net.IPNet, 0)
+	//config.Tcp4Peers = new(CidrSet)
+	//config.Udp4Peers = new(CidrSet)
+	//config.Udplite4Peers = new(CidrSet)
+	//config.Tcp6Peers = new(CidrSet)
+	//config.Udp6Peers = new(CidrSet)
+	//config.Udplite6Peers = new(CidrSet)
 
 }
 
@@ -108,27 +125,27 @@ func (config *ProcessConfig) Decide(pp *ProcessProfile) string {
 	if ret != "" {
 		return fmt.Sprintf("CompletionTime: %s", ret)
 	}
-	ret = config.Tcp4Peers.Decide(pp.Tcp4Peers)
+	ret = config.tcp4Peers.Decide(pp.Tcp4Peers)
 	if ret != "" {
 		return fmt.Sprintf("Tcp4Peers: %s", ret)
 	}
-	ret = config.Udp4Peers.Decide(pp.Udp4Peers)
+	ret = config.udp4Peers.Decide(pp.Udp4Peers)
 	if ret != "" {
 		return fmt.Sprintf("Udp4Peers: %s", ret)
 	}
-	ret = config.Udplite4Peers.Decide(pp.Udplite4Peers)
+	ret = config.udplite4Peers.Decide(pp.Udplite4Peers)
 	if ret != "" {
 		return fmt.Sprintf("Udplite4Peers: %s", ret)
 	}
-	ret = config.Tcp6Peers.Decide(pp.Tcp6Peers)
+	ret = config.tcp6Peers.Decide(pp.Tcp6Peers)
 	if ret != "" {
 		return fmt.Sprintf("Tcp6Peers: %s", ret)
 	}
-	ret = config.Udp6Peers.Decide(pp.Udp6Peers)
+	ret = config.udp6Peers.Decide(pp.Udp6Peers)
 	if ret != "" {
 		return fmt.Sprintf("Udp6Peers: %s", ret)
 	}
-	ret = config.Udplite6Peers.Decide(pp.Udplite6Peers)
+	ret = config.udplite6Peers.Decide(pp.Udplite6Peers)
 	if ret != "" {
 		return fmt.Sprintf("Udplite6Peers: %s", ret)
 	}

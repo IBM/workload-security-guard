@@ -10,6 +10,9 @@ import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import {FormHelperText} from '@mui/material';
 
+// TBD - should we use import ipaddr from 'ipaddr.js' or alternative 
+//       and use ipaddr.isValid() insetad of the regex used now? 
+
 const ListItem = styled('li')(({ theme }) => ({
   margin: theme.spacing(0.5),
 }));
@@ -17,7 +20,6 @@ const ListItem = styled('li')(({ theme }) => ({
 
 function Subnets(props) {
   var { data, onDataChange, nodeId, name, ipv6 } = props; 
-  var value = {}
   
   //const [version, setVersion] = useState(0);
   const [dataVal, setData] = useState(data);
@@ -33,40 +35,41 @@ function Subnets(props) {
     }
     function onSelectKey(k) {
         console.log("handleDelKey",k)
-        if (k !== "") {
-          delete(value[k])
-          console.log("handleDelKey", value)  
-          onDataChange(value)
-          setData(value)
-          //setVersion(version+1);
-        }
+        deleteKey(k)
         delKey(false)
     }
     function onNewKey(k) {
         if (k !== "") {
-            value[k] = true
-            console.log("onNewKey", value)  
-            setData(value)
+            dataVal.push(k)
+            console.log("onNewKey", dataVal)  
+            setData(dataVal)
+            onDataChange(dataVal)
+            //setVersion(version+1)
         }
         setNewkey(false)
-        onDataChange(value)
-        //setVersion(version+1)
     };
+    function deleteKey(k) {
+        console.log("deleteKey",k)
+        if (k !== "") {
+            const index = dataVal.indexOf(k);
+            if(index != -1){
+                dataVal.splice(index, 1);
+                console.log("deleteKey", dataVal)  
+                onDataChange(dataVal)
+                setData(dataVal)
+                //setVersion(version+1);
+            }
+        }
+    }
+
+
     function handleDelete(k) {
         return () => {
-            delete(value[k])
-            console.log("handleDelete", k, value)  
-            setData(value)
-            onDataChange(value)
+            console.log("handleDelKey",k)
+            deleteKey(k)
         }     
     };
    
-    let keys = []
-    for (let key in dataVal) {  
-        value[key] = true
-        keys.push(key)
-    }
-    console.log("Set value", value, "keys", keys)
     let ipregex = /^((25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])(\.(?!$)|$)){4}$/;
     let cidr = /^((25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])\.){3}(25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])\/(3[0-2]|([12]|)[0-9])$/;
     if (ipv6) {
@@ -84,8 +87,8 @@ function Subnets(props) {
        
     }
     var subnets 
-    if (keys.length>0) { 
-        subnets = keys.map((key) => {
+    if (dataVal.length>0) { 
+        subnets = dataVal.map((key) => {
             let icon;
             return (
             <ListItem key={key}>
@@ -102,8 +105,8 @@ function Subnets(props) {
     }
     return (
        <TreeItem nodeId={nodeId} label={name}>
-            <SelectKeyDialog open={delkeyOpen} name="Key to delete" data ={Object.keys(value)} onClose={onSelectKey} ></SelectKeyDialog>
-            <AddKeyDialog open={newkeyOpen} data ={Object.keys(value)} regex={cidr} title={"Add Subnet"} onClose={onNewKey} ></AddKeyDialog>
+            <SelectKeyDialog open={delkeyOpen} name="Key to delete" data ={dataVal} onClose={onSelectKey} ></SelectKeyDialog>
+            <AddKeyDialog open={newkeyOpen} data ={dataVal} regex={cidr} title={"Add Subnet"} onClose={onNewKey} ></AddKeyDialog>
             <FormHelperText>Allowed subnets:</FormHelperText>
             <Paper sx={{
                     display: 'flex',

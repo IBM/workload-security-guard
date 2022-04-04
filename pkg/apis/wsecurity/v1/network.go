@@ -13,7 +13,7 @@ type IpPile struct {
 	m    map[string]bool
 }
 
-type IpnetSet []net.IPNet
+type CidrSet []net.IPNet
 
 type IpSet struct {
 	list []net.IP
@@ -33,15 +33,15 @@ func (ipp *IpPile) Clear() {
 	ipp.List = make([]string, 0, 1)
 }
 
-func (ipnets IpnetSet) Decide(ips *IpSet) string {
+func (cidr CidrSet) Decide(ips *IpSet) string {
 	var ok bool
 	if ips == nil {
 		return ""
 	}
-	fmt.Printf("func (%v) Decide(%v)\n", ipnets, ips)
+	fmt.Printf("func (%v) Decide(%v)\n", cidr, ips)
 	for _, ip := range ips.list {
 		ok = false
-		for _, subnet := range ipnets {
+		for _, subnet := range cidr {
 			if subnet.Contains(ip) {
 				ok = true
 				break
@@ -55,73 +55,84 @@ func (ipnets IpnetSet) Decide(ips *IpSet) string {
 	return ""
 }
 
-func nextForignIp(data []byte) (remoteIp net.IP, moreData []byte) {
+func nextForignIp(data_in []byte) (net.IP, []byte) {
 	var i int
 	var b byte
-	for i, b = range data {
-		if b == 0xA { // get to end of line
-			break
-		}
-	}
-	data = data[i:]
-	for i, b = range data {
-		if b == 0x3A { // get to colon after sl
-			break
-		}
-	}
-	if len(data) < i+20 {
-		return
-	}
-	data = data[i+1:]
-	for i, b = range data {
-		if b == 0x3A { // get to colon after localIp
-			break
-		}
-	}
-	if len(data) < i+20 {
-		return
-	}
-	data = data[i+6:]
-
-	for i, b = range data {
-		if b == 0x3A { // get to colon after remoteIp
-			break
-		}
-	}
-	moreData = data[i:]
-
-	ipstr := string(data[:i])
-	fmt.Printf("Proccessing IP %s\n", ipstr)
-	var ip net.IP
-	if len(ipstr) == 8 { //ipv4
-		ip = make(net.IP, net.IPv4len)
-		v, err := strconv.ParseUint(ipstr, 16, 32)
-		if err != nil {
-			return
-		}
-		binary.LittleEndian.PutUint32(ip, uint32(v))
-		fmt.Printf("Proccessed IPv4 %s\n", ip.String())
-	} else if len(ipstr) == 32 { //ipv6
-		ip = make(net.IP, net.IPv6len)
-		for i := 0; i < 16; i += 4 {
-			u, err := strconv.ParseUint(ipstr[0:8], 16, 32)
-			if err != nil {
-				return
+	var data []byte = data_in
+	var ipstr string
+NextLine:
+	for {
+		ipstr = ""
+		// 1. Move forward in data, set ipstr to the next candidate
+		for i, b = range data {
+			if b == 0xA { // get to end of line
+				data = data[i+1:]
+				// 1a. moved to a new line
+				for i, b = range data {
+					if b == 0x3A { // get to colon after sl
+						data = data[i+1:]
+						// 1b. moved after first colon
+						for i, b = range data {
+							if b == 0x3A { // get to colon after localIp
+								data = data[i+6:]
+								// 1c. moved till after second colon + 6 bytes - it is where the ip starts
+								for i, b = range data {
+									if b == 0x3A { // get to colon after remoteIp
+										ipstr = string(data[:i])
+										data = data[i+1:]
+										// 1d. moved till after third colon and placed the ip in ipstr
+										break
+									}
+								}
+								break
+							}
+						}
+						break
+					}
+				}
+				break
 			}
-			binary.LittleEndian.PutUint32(ip[i:i+4], uint32(u))
-			ipstr = ipstr[8:] //skip 8 bytes
 		}
-		fmt.Printf("Proccessed IPv6 %s\n", ip.String())
-	} else {
-		fmt.Printf("Proccessed skipped IP structrue\n")
-		return
+
+		// 2. Try to process ipstr
+		//    We return nil if no more IPs or if ip has bad format
+		fmt.Printf("Proccessing IP %s\n", ipstr)
+
+		var ip net.IP
+		if len(ipstr) == 8 { //ipv4
+			ip = make(net.IP, net.IPv4len)
+			v, err := strconv.ParseUint(ipstr, 16, 32)
+			if err != nil {
+				return nil, nil
+			}
+			binary.LittleEndian.PutUint32(ip, uint32(v))
+			fmt.Printf("Proccessed IPv4 %s\n", ip.String())
+		} else if len(ipstr) == 32 { //ipv6
+			ip = make(net.IP, net.IPv6len)
+			for i := 0; i < 16; i += 4 {
+				u, err := strconv.ParseUint(ipstr[0:8], 16, 32)
+				if err != nil {
+					return nil, nil
+				}
+				binary.LittleEndian.PutUint32(ip[i:i+4], uint32(u))
+				ipstr = ipstr[8:] //skip 8 bytes
+			}
+			fmt.Printf("Proccessed IPv6 %s\n", ip.String())
+		} else {
+			fmt.Printf("Proccessed skipped IP structrue\n")
+			return nil, nil
+		}
+
+		// 3. Success!! If ip of interest  - back to caller, else move to next line
+
+		if ip.IsUnspecified() || ip.IsLoopback() || ip.IsPrivate() {
+			continue NextLine
+		}
+
+		fmt.Printf("Adding IP %s (not unspecified, private or loopback!)\n", ip.String())
+		return ip, data
 	}
-	if ip.IsUnspecified() || ip.IsLoopback() || ip.IsPrivate() {
-		return
-	}
-	remoteIp = ip
-	fmt.Printf("Adding IP %s (not unspecified, private or loopback!)\n", ip.String())
-	return
+
 	//const grpLen = 4
 	//i, j := 0, 4
 	//i := 0
@@ -173,9 +184,7 @@ func IpSetFromProc(protocol string) (ips *IpSet) {
 	ips.m = make(map[string]bool)
 	ip, data := nextForignIp(data)
 	for data != nil {
-		if ip != nil {
-			ips.m[ip.String()] = true
-		}
+		ips.m[ip.String()] = true
 		ip, data = nextForignIp(data)
 	}
 	ips.list = make([]net.IP, len(ips.m))
@@ -199,12 +208,38 @@ func IpSetFromProc(protocol string) (ips *IpSet) {
 	}
 */
 
-func (in IpnetSet) DeepCopyInto(out *IpnetSet) {
+func (in CidrSet) DeepCopyInto(out *CidrSet) {
+	copy((*out), in)
 	cpy := make([]net.IPNet, len(in))
 	for i, v := range in {
 		copy(cpy[i].IP, v.IP)
 		copy(cpy[i].Mask, v.Mask)
 	}
-	*out = cpy
-	//*out = (IpnetSet)(cpy)
+	(*out) = cpy
+}
+
+func GetCidrsFromList(list []string) CidrSet {
+	cidr := make([]net.IPNet, len(list))
+	fmt.Printf("Legal cidr %v len %d during GetCidrsFromList\n", cidr, len(cidr))
+	var n int
+	for _, v := range list {
+		_, ipNet, err := net.ParseCIDR(v)
+		if err != nil {
+			fmt.Printf("Ilegal cidr %s is skipped during GetCidrsFromList\n", v)
+			continue
+		}
+		fmt.Printf("Legal cidr %s added (%v) during GetCidrsFromList\n", v, ipNet)
+		cidr[n].IP = make(net.IP, len(ipNet.IP))
+		cidr[n].Mask = make(net.IPMask, len(ipNet.Mask))
+		copy(cidr[n].IP, ipNet.IP)
+		copy(cidr[n].Mask, ipNet.Mask)
+		fmt.Printf("Legal cidr[n] %v (n=%d) during GetCidrsFromList\n", cidr[n], n)
+
+		fmt.Printf("Legal cidr %v len %d during GetCidrsFromList\n", cidr, len(cidr))
+		n++
+	}
+	cidr = cidr[:n]
+	fmt.Printf("Cidrs %v after CopyCidrFromList\n", cidr)
+	return cidr
+
 }

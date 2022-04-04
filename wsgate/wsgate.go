@@ -665,6 +665,7 @@ func (p *plug) readCrd(namespace string, serviceId string) *spec.GuardianSpec {
 	}
 	pi.Log.Infof("Found guardian %s.%s", serviceId, namespace)
 	fmt.Print((*spec.WsGate)(g.Spec).Marshal(0))
+	(*spec.WsGate)(g.Spec).Reconcile()
 	return g.Spec
 }
 

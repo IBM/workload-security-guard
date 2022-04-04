@@ -30,15 +30,16 @@ type ReqPile struct {
 }
 
 type ReqConfig struct {
-	ClientIp      IpnetSet      `json:"cip"`           // subnets for external IPs (normally empty)
-	HopIp         IpnetSet      `json:"hopip"`         // subnets for external IPs
+	clientIp      CidrSet
+	hopIp         CidrSet
+	ClientIp      []string      `json:"cip"`           // subnets for external IPs (normally empty)
+	HopIp         []string      `json:"hopip"`         // subnets for external IPs
 	Method        Set           `json:"method"`        // GET
 	Proto         Set           `json:"proto"`         // "HTTP/1.1"
 	ContentLength U8MinmaxSlice `json:"contentlength"` // 0
-
-	Url     UrlConfig     `json:"url"`
-	Qs      QueryConfig   `json:"qs"`
-	Headers HeadersConfig `json:"headers"`
+	Url           UrlConfig     `json:"url"`
+	Qs            QueryConfig   `json:"qs"`
+	Headers       HeadersConfig `json:"headers"`
 }
 
 type ReqProfile struct {
@@ -411,6 +412,13 @@ func (rp *ReqProfile) Marshal(depth int) string {
 func (config *RespConfig) Normalize() {
 	config.Headers.Normalize()
 }
+func (config *RespConfig) Reconcile() {
+}
+
+func (config *ReqConfig) Reconcile() {
+	config.clientIp = GetCidrsFromList(config.ClientIp)
+	config.hopIp = GetCidrsFromList(config.HopIp)
+}
 
 func (config *ReqConfig) Normalize() {
 	config.Qs.Normalize()
@@ -441,13 +449,13 @@ func (config *ReqConfig) Decide(rp *ReqProfile) string {
 		return fmt.Sprintf("Headers: %s", ret)
 	}
 	if (rp.ClientIp != nil) && !rp.ClientIp.IsUnspecified() && !rp.ClientIp.IsLoopback() && !rp.ClientIp.IsPrivate() {
-		ret = config.ClientIp.Decide(IpSetFromIp(rp.ClientIp))
+		ret = config.clientIp.Decide(IpSetFromIp(rp.ClientIp))
 		if ret != "" {
 			return fmt.Sprintf("ClientIp: %s", ret)
 		}
 	}
 	if (rp.HopIp != nil) && !rp.HopIp.IsUnspecified() && !rp.HopIp.IsLoopback() && !rp.HopIp.IsPrivate() {
-		ret = config.HopIp.Decide(IpSetFromIp(rp.HopIp))
+		ret = config.hopIp.Decide(IpSetFromIp(rp.HopIp))
 		if ret != "" {
 			return fmt.Sprintf("HopIp: %s", ret)
 		}

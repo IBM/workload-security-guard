@@ -58,7 +58,7 @@ function Req(props) {
     console.log("handleCipChange", data)  
     onDataChange(data)
   };
-  var methods = ["Get", "Post", "Put", "Head", "Patch", "Delete", "Connect", "Options", "Trace" ]
+  var methods = ["GET", "POST", "PUT", "HEAD", "PATCH", "DELETE", "CONNECT", "OPTIONS", "TRACE" ]
   var protocols = ["HTTP/1.0", "HTTP/1.1",  "HTTP/2"]
 
 return (
