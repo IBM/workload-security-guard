@@ -52,7 +52,7 @@ function Subnets(props) {
         console.log("deleteKey",k)
         if (k !== "") {
             const index = dataVal.indexOf(k);
-            if(index != -1){
+            if(index !== -1){
                 dataVal.splice(index, 1);
                 console.log("deleteKey", dataVal)  
                 onDataChange(dataVal)
@@ -70,7 +70,7 @@ function Subnets(props) {
         }     
     };
    
-    let ipregex = /^((25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])(\.(?!$)|$)){4}$/;
+    //let ipregex = /^((25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])(\.(?!$)|$)){4}$/;
     let cidr = /^((25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])\.){3}(25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])\/(3[0-2]|([12]|)[0-9])$/;
     if (ipv6) {
         cidr = new RegExp('^(' +

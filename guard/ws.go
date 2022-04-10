@@ -21,6 +21,13 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
+type serviceRecord struct {
+	wsgate spec.WsGate
+	pile   spec.Pile
+}
+
+var services = make(map[string]*serviceRecord)
+
 func processPile(w http.ResponseWriter, req *http.Request) {
 	// Add security to ensure that only gate can use this interface!
 	// Check that the source is from the local 10.*.*.* range
@@ -29,7 +36,7 @@ func processPile(w http.ResponseWriter, req *http.Request) {
 	query := req.URL.Query()
 	sidSlice := query["sid"]
 	nsSlice := query["ns"]
-	fmt.Printf("Servicing processPile %v\n", query)
+	//fmt.Printf("Servicing processPile %v\n", query)
 	if len(sidSlice) != 1 || len(nsSlice) != 1 {
 		fmt.Printf("Servicing processPile missing data sid %d ns %d\n", len(sidSlice), len(nsSlice))
 		return
@@ -48,6 +55,24 @@ func processPile(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	fmt.Printf("Servicing processPile of service id %s:%s %v\n", ns, sid, pile)
+	service := sid + "." + ns
+	record, exists := services[service]
+	if !exists {
+		record = new(serviceRecord)
+		record.pile.Clear()
+		//record.wsgate.Learned = make([]spec.Critiria, 1)
+		services[service] = record
+	}
+	record.pile.Append(&pile)
+	fmt.Printf("Record %s:%s %v\n", ns, sid, record.pile)
+	fmt.Printf("Marshal Record\n______________\n%s\n", record.pile.Marshal())
+	learn := new(spec.Critiria)
+	learn.Learn(&record.pile)
+	fmt.Printf("learn %v\n", learn)
+	record.wsgate.Learned = append(record.wsgate.Learned, learn)
+	fmt.Printf("record.wsgate.Learned %v\n", record.wsgate.Learned[0])
+	fmt.Printf("Marshal Learned\n______________\n%s\n", record.wsgate.Learned[0].Marshal(0))
+
 	data := ""
 	w.Write([]byte(data))
 }

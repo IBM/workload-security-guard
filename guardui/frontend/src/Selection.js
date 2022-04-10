@@ -8,10 +8,20 @@ import TreeItem from '@mui/lab/TreeItem';
 function Selection(props) {
   var { data, onDataChange, nodeId, name, selection } = props;
   
-  const [dataVal, setData] = useState(data);
- 
-  let value = dataVal
+  let dataFlags = 0
+  for (var i=0;i<selection.length;i++) {
+    if (data.includes(selection[i])) {
+      dataFlags |=  (0x1 << i)
+    }        
+  }
 
+
+  const [dataVal, setData] = useState(dataFlags);
+  var value =  dataVal
+  console.log("data", data)
+  console.log("dataFlags", dataFlags)
+  console.log("value", value)
+  
   function handleOnOffChange(key, d) {
       if (d) {
         value |= 0x1 << key 
@@ -20,10 +30,10 @@ function Selection(props) {
       }
       
       console.log("key", key, "data", d, "value", value)
-      let results = {}
+      let results = []
       for (var i=0;i<selection.length;i++) {
             if (value & (0x1 << i)) {
-                results[selection[i]] = true
+                results.push(selection[i])
             } 
       }
       onDataChange(results)

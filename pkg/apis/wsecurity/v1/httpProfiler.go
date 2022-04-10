@@ -18,11 +18,11 @@ type RespConfig struct {
 }
 
 type ReqPile struct {
-	ClientIp      []net.IP `json:"cip"`           // 192.168.32.1
-	HopIp         []net.IP `json:"hopip"`         // 1.2.3.4
-	Method        []string `json:"method"`        // GET
-	Proto         []string `json:"proto"`         // "HTTP/1.1"
-	ContentLength []uint8  `json:"contentlength"` // 0
+	ClientIp      IpPile  `json:"cip"`           // 192.168.32.1
+	HopIp         IpPile  `json:"hopip"`         // 1.2.3.4
+	Method        Set     `json:"method"`        // GET
+	Proto         Set     `json:"proto"`         // "HTTP/1.1"
+	ContentLength []uint8 `json:"contentlength"` // 0
 
 	Url     UrlPile     `json:"url"`
 	Qs      QueryPile   `json:"qs"`
@@ -32,10 +32,12 @@ type ReqPile struct {
 type ReqConfig struct {
 	clientIp      CidrSet
 	hopIp         CidrSet
+	method        Set
+	proto         Set
 	ClientIp      []string      `json:"cip"`           // subnets for external IPs (normally empty)
 	HopIp         []string      `json:"hopip"`         // subnets for external IPs
-	Method        Set           `json:"method"`        // GET
-	Proto         Set           `json:"proto"`         // "HTTP/1.1"
+	Method        []string      `json:"method"`        // GET
+	Proto         []string      `json:"proto"`         // "HTTP/1.1"
 	ContentLength U8MinmaxSlice `json:"contentlength"` // 0
 	Url           UrlConfig     `json:"url"`
 	Qs            QueryConfig   `json:"qs"`
@@ -43,8 +45,8 @@ type ReqConfig struct {
 }
 
 type ReqProfile struct {
-	ClientIp      net.IP          `json:"cip"`           // 192.168.32.1
-	HopIp         net.IP          `json:"hopip"`         // 1.2.3.4
+	ClientIp      *IpSet          `json:"cip"`           // 192.168.32.1
+	HopIp         *IpSet          `json:"hopip"`         // 1.2.3.4
 	Method        string          `json:"method"`        // GET
 	Proto         string          `json:"proto"`         // "HTTP/1.1"
 	ContentLength uint8           `json:"contentlength"` // 0
@@ -107,6 +109,10 @@ func (p *UrlPile) Clear() {
 	p.Segments = make([]uint8, 0, 1)
 	p.Val = new(SimpleValPile)
 }
+func (p *UrlPile) Append(a *UrlPile) {
+	p.Segments = append(p.Segments, a.Segments...)
+	p.Val.Append(a.Val)
+}
 
 func (u *UrlProfile) Profile(path string) {
 	segments := strings.Split(path, "/")
@@ -144,9 +150,27 @@ func (u *UrlProfile) Marshal(depth int) string {
 	return description.String()
 }
 
+func (u *UrlPile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Val: %s", u.Val.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Segments: %v", u.Segments))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
 func (config *UrlConfig) Normalize() {
 	config.Val.Normalize()
 	config.Segments = append(config.Segments, U8Minmax{0, 0})
+}
+
+func (config *UrlConfig) Learn(p *UrlPile) {
+	config.Segments.Learn(p.Segments)
+	config.Val.Learn(p.Val)
 }
 
 func (config *UrlConfig) Decide(u *UrlProfile) string {
@@ -175,12 +199,12 @@ func (config *UrlConfig) Marshal(depth int) string {
 
 // Allow typical URL values - use for development but not in production
 func (config *UrlConfig) AddTypicalVal() {
-	config.Val.Spaces = make([]U8Minmax, 0, 1)
-	config.Val.Unicodes = make([]U8Minmax, 0, 1)
-	config.Val.NonReadables = make([]U8Minmax, 0, 1)
-	config.Val.Letters = make([]U8Minmax, 0, 1)
-	config.Val.Digits = make([]U8Minmax, 0, 1)
-	config.Val.Sequences = make([]U8Minmax, 0, 1)
+	config.Val.Spaces = make([]U8Minmax, 1)
+	config.Val.Unicodes = make([]U8Minmax, 1)
+	config.Val.NonReadables = make([]U8Minmax, 1)
+	config.Val.Letters = make([]U8Minmax, 1)
+	config.Val.Digits = make([]U8Minmax, 1)
+	config.Val.Sequences = make([]U8Minmax, 1)
 	//config.Val.Words = make([]U8Minmax, 0, 1)
 	//config.Val.Numbers = make([]U8Minmax, 0, 1)
 
@@ -194,7 +218,7 @@ func (config *UrlConfig) AddTypicalVal() {
 	//config.Val.Numbers[0].Max = 16
 	//config.Val.FlagsL = 1 << SlashSlot
 	config.Val.Flags = 1 << SlashSlot
-	config.Segments = make([]U8Minmax, 0, 1)
+	config.Segments = make([]U8Minmax, 1)
 	config.Segments[0].Max = 8
 }
 
@@ -203,7 +227,12 @@ func (p *QueryPile) Add(q *QueryProfile) {
 }
 
 func (p *QueryPile) Clear() {
+	p.Kv = new(KeyValPile)
 	p.Kv.Clear()
+}
+
+func (p *QueryPile) Append(a *QueryPile) {
+	p.Kv.Append(a.Kv)
 }
 
 func (q *QueryProfile) Profile(m map[string][]string) {
@@ -214,7 +243,23 @@ func (q *QueryProfile) Profile(m map[string][]string) {
 func (config *QueryConfig) Normalize() {
 	config.Kv.Normalize()
 }
+
+func (config *QueryConfig) Learn(p *QueryPile) {
+	config.Kv.Learn(p.Kv)
+}
+
 func (q *QueryProfile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Kv: %s", q.Kv.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
+func (q *QueryPile) Marshal(depth int) string {
 	var description bytes.Buffer
 	shift := strings.Repeat("  ", depth)
 	description.WriteString("{\n")
@@ -254,7 +299,12 @@ func (p *HeadersPile) Add(h *HeadersProfile) {
 	p.Kv.Add(h.Kv)
 }
 func (p *HeadersPile) Clear() {
+	p.Kv = new(KeyValPile)
 	p.Kv.Clear()
+}
+
+func (p *HeadersPile) Append(a *HeadersPile) {
+	p.Kv.Append(a.Kv)
 }
 
 func (h *HeadersProfile) Profile(m map[string][]string) {
@@ -273,8 +323,23 @@ func (h *HeadersProfile) Marshal(depth int) string {
 	return description.String()
 }
 
+func (h *HeadersPile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Kv: %s", h.Kv.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
 func (config *HeadersConfig) Normalize() {
 	config.Kv.Normalize()
+}
+
+func (config *HeadersConfig) Learn(p *HeadersPile) {
+	config.Kv.Learn(p.Kv)
 }
 
 func (config *HeadersConfig) Decide(h *HeadersProfile) string {
@@ -313,6 +378,9 @@ func (p *RespPile) Clear() {
 	p.Headers.Clear()
 }
 
+func (p *RespPile) Append(a *RespPile) {
+	p.Headers.Append(&a.Headers)
+}
 func (rp *RespProfile) Profile(resp *http.Response) {
 	rp.Headers = new(HeadersProfile)
 	rp.Headers.Profile(resp.Header)
@@ -329,10 +397,22 @@ func (rp *RespProfile) Marshal(depth int) string {
 	return description.String()
 }
 
+func (rp *RespPile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Headers: %s", rp.Headers.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
 func (p *ReqPile) Add(rp *ReqProfile) {
-	p.ClientIp = append(p.ClientIp, rp.ClientIp)
-	p.Method = append(p.Method, rp.Method)
-	p.Proto = append(p.Proto, rp.Proto)
+	p.ClientIp.Add(rp.ClientIp)
+	p.HopIp.Add(rp.HopIp)
+	p.Method.Add(rp.Method)
+	p.Proto.Add(rp.Proto)
 	p.ContentLength = append(p.ContentLength, rp.ContentLength)
 	p.Url.Add(rp.Url)
 	p.Qs.Add(rp.Qs)
@@ -340,13 +420,23 @@ func (p *ReqPile) Add(rp *ReqProfile) {
 }
 
 func (p *ReqPile) Clear() {
-	p.ClientIp = make([]net.IP, 0, 1)
-	p.Method = make([]string, 0, 1)
-	p.Proto = make([]string, 0, 1)
+	p.ClientIp.Clear()
+	p.Method.Clear()
+	p.Proto.Clear()
 	p.ContentLength = make([]uint8, 0, 1)
 	p.Url.Clear()
 	p.Qs.Clear()
 	p.Headers.Clear()
+}
+
+func (p *ReqPile) Append(a *ReqPile) {
+	p.ClientIp.Append(&a.ClientIp)
+	p.Method.Append(&a.Method)
+	p.Proto.Append(&a.Proto)
+	p.ContentLength = append(p.ContentLength, a.ContentLength...)
+	p.Url.Append(&a.Url)
+	p.Qs.Append(&a.Qs)
+	p.Headers.Append(&a.Headers)
 }
 
 func (rp *ReqProfile) Profile(req *http.Request, cip net.IP) {
@@ -365,10 +455,12 @@ func (rp *ReqProfile) Profile(req *http.Request, cip net.IP) {
 	}
 	if len(hopipstr) > 0 {
 		hopip = net.ParseIP(hopipstr)
-		rp.HopIp = hopip
+		rp.HopIp = IpSetFromIp(hopip)
 	}
 	fmt.Printf("HOP-IP %v %s %s %s \n", hopip, hopipstr, req.Header["X-Forwarded-For"], req.Header["Forwarded"])
-	rp.ClientIp = cip
+	rp.ClientIp = IpSetFromIp(cip)
+	rp.HopIp = IpSetFromIp(hopip)
+
 	rp.Method = req.Method
 	rp.Proto = req.Proto
 	log2length := uint8(0)
@@ -395,9 +487,36 @@ func (rp *ReqProfile) Marshal(depth int) string {
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Proto: %v\n", rp.Proto))
 	description.WriteString(shift)
-	description.WriteString(fmt.Sprintf("  ClientIp: %s\n", rp.ClientIp.String()))
+	description.WriteString(fmt.Sprintf("  ClientIp: %v\n", rp.ClientIp))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  HopIp: %v\n", rp.HopIp))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  ContentLength: %d\n", int(math.Pow(2, float64(rp.ContentLength)))))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Url: %s", rp.Url.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Qs: %s", rp.Qs.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Headers: %s", rp.Headers.Marshal(depth+1)))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
+func (rp *ReqPile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Method: %v\n", rp.Method))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Proto: %v\n", rp.Proto))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  ClientIp: %v\n", rp.ClientIp))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  HopIp: %v\n", rp.HopIp))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  ContentLength: %v\n", rp.ContentLength))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Url: %s", rp.Url.Marshal(depth+1)))
 	description.WriteString(shift)
@@ -418,6 +537,27 @@ func (config *RespConfig) Reconcile() {
 func (config *ReqConfig) Reconcile() {
 	config.clientIp = GetCidrsFromList(config.ClientIp)
 	config.hopIp = GetCidrsFromList(config.HopIp)
+	AddToSetFromList(config.Method, &config.method)
+	AddToSetFromList(config.Proto, &config.proto)
+}
+
+func (config *ReqConfig) Learn(p *ReqPile) {
+	config.clientIp = GetCidrsFromIpList(p.ClientIp.List)
+	config.hopIp = GetCidrsFromIpList(p.HopIp.List)
+	config.method.Append(&p.Method)
+	config.proto.Append(&p.Proto)
+	config.ContentLength.Learn(p.ContentLength)
+	config.Headers.Learn(&p.Headers)
+	config.Qs.Learn(&p.Qs)
+	config.Url.Learn(&p.Url)
+	config.Method = config.method.List
+	config.Proto = config.proto.List
+	config.ClientIp = config.clientIp.Strings()
+	config.HopIp = config.hopIp.Strings()
+}
+
+func (config *RespConfig) Learn(p *RespPile) {
+	config.Headers.Learn(&p.Headers)
 }
 
 func (config *ReqConfig) Normalize() {
@@ -448,28 +588,25 @@ func (config *ReqConfig) Decide(rp *ReqProfile) string {
 	if ret != "" {
 		return fmt.Sprintf("Headers: %s", ret)
 	}
-	if (rp.ClientIp != nil) && !rp.ClientIp.IsUnspecified() && !rp.ClientIp.IsLoopback() && !rp.ClientIp.IsPrivate() {
-		ret = config.clientIp.Decide(IpSetFromIp(rp.ClientIp))
-		if ret != "" {
-			return fmt.Sprintf("ClientIp: %s", ret)
-		}
-	}
-	if (rp.HopIp != nil) && !rp.HopIp.IsUnspecified() && !rp.HopIp.IsLoopback() && !rp.HopIp.IsPrivate() {
-		ret = config.hopIp.Decide(IpSetFromIp(rp.HopIp))
-		if ret != "" {
-			return fmt.Sprintf("HopIp: %s", ret)
-		}
+	ret = config.clientIp.Decide(rp.ClientIp)
+	if ret != "" {
+		return fmt.Sprintf("ClientIp: %s", ret)
 	}
 
-	methodSet := make(Set)
-	methodSet[rp.Method] = true
-	ret = config.Method.Decide(methodSet)
+	ret = config.hopIp.Decide(rp.HopIp)
+	if ret != "" {
+		return fmt.Sprintf("HopIp: %s", ret)
+	}
+
+	//methodSet := make(Set)
+	//methodSet[rp.Method] = true
+	ret = config.method.Decide(rp.Method)
 	if ret != "" {
 		return fmt.Sprintf("Method: %s", ret)
 	}
-	protoSet := make(Set)
-	protoSet[rp.Proto] = true
-	ret = config.Proto.Decide(protoSet)
+	//protoSet := make(Set)
+	//protoSet[rp.Proto] = true
+	ret = config.proto.Decide(rp.Proto)
 	if ret != "" {
 		return fmt.Sprintf("Proto: %s", ret)
 	}
@@ -501,6 +638,8 @@ func (config *ReqConfig) Marshal(depth int) string {
 	description.WriteString(fmt.Sprintf("  Proto: %v\n", config.Proto))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  ClientIp: %v\n", config.ClientIp))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  HopIp: %v\n", config.HopIp))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  ContentLength: %s\n", config.ContentLength.Marshal()))
 	description.WriteString(shift)

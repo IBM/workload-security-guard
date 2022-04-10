@@ -53,11 +53,15 @@ type plug struct {
 	wsGate  *spec.WsGate
 	//blocked             []string
 	//numOk               uint32
-	lastConsultReported time.Time
-	numConsultsCount    uint16
-	httpc               http.Client
-	cycle               int
-	allowedPile         spec.Pile
+	//lastConsultReported time.Time
+	//numConsultsCount    uint16
+	httpc http.Client
+	cycle int
+	//allowedPile         spec.Pile
+	pile       spec.Pile
+	index      uint32
+	ongoing    map[uint32]*spec.SessionProfile
+	statistics map[string]uint32
 }
 
 func GetMD5Hash(text string) string {
@@ -89,17 +93,19 @@ func ReadUserIP(req *http.Request) string {
 	return IPAddress
 }
 
-func (p *plug) screenRequest(req *http.Request) error {
-	p.fetchConfig()
+func (p *plug) screenRequest(req *http.Request, rp *spec.ReqProfile) error {
+	var decission string
+
+	p.stats("Total")
 	// Request client and server identities
 	cip, cport, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
-		return fmt.Errorf("illegal req.RemoteAddr %s", err.Error())
+		decission += fmt.Sprintf("illegal req.RemoteAddr %s", err.Error())
 	}
 	sip, sport, err := net.SplitHostPort(req.URL.Host)
 
 	if err != nil {
-		return fmt.Errorf("illegal req.URL.Host %s", err.Error())
+		decission += fmt.Sprintf("illegal req.URL.Host %s", err.Error())
 	}
 	pi.Log.Debugf("Client: %s port %s", cip, cport)
 	pi.Log.Debugf("Server: %s port %s", sip, sport)
@@ -115,47 +121,53 @@ func (p *plug) screenRequest(req *http.Request) error {
 
 	// TBD req.Form
 
-	rp := new(spec.ReqProfile)
 	ip := net.ParseIP(cip)
 	rp.Profile(req, ip)
 	fmt.Println(rp.Marshal(0))
 	fmt.Println(p.wsGate.Configured)
 	ctrl := p.wsGate.Control
-	var decission string
 	if ctrl.Auto {
-		decission = p.wsGate.Learned.Req.Decide(rp)
+		var description bytes.Buffer
+		for i, leanred := range p.wsGate.Learned {
+			decission = leanred.Req.Decide(rp)
+			if decission == "" {
+				break
+			}
+			description.WriteString(fmt.Sprintf("  Learned[%d]: %s", i, decission))
+		}
+		if decission != "" {
+			// include all decissions!
+			decission += description.String()
+		}
 	} else {
-		decission = p.wsGate.Configured.Req.Decide(rp)
+		decission += p.wsGate.Configured.Req.Decide(rp)
 	}
 	if decission != "" {
-		// potentially consult guard before rejecting
-		pi.Log.Infof("Guardian refused to allow: %s", decission)
-		if ctrl.Consult {
-			minuete := time.Now().Truncate(time.Minute)
-			if p.lastConsultReported != minuete {
-				p.lastConsultReported = minuete
-				p.numConsultsCount = 0
-			}
-			if p.numConsultsCount < ctrl.RequestsPerMinuete {
-				p.numConsultsCount = p.numConsultsCount + 1
-				pi.Log.Infof("Consulting Guard %d/%d", p.numConsultsCount, ctrl.RequestsPerMinuete)
-				decission = p.consultOnRequest(rp)
-				//pi.Log.Infof("Guard said: %s", decission)
-			}
-		}
-	}
-	if decission == "" {
-		if ctrl.Learn {
-			p.allowedPile.Req.Add(rp)
-			p.reportAllow()
-		}
-	} else {
 		pi.Log.Infof("Alert HttpRequest: %s", decission)
-		p.reportBlock(rp, decission)
-		if !p.wsGate.Control.Block {
-			return errors.New(decission)
-		}
+		p.stats("ReqNok")
+		return errors.New(decission)
 	}
+	p.stats("ReqOk")
+	return nil
+	/*
+		if decission != "" {
+			// potentially consult guard before rejecting
+			pi.Log.Infof("Guardian refused to allow: %s", decission)
+			if ctrl.Consult {
+				minuete := time.Now().Truncate(time.Minute)
+				if p.lastConsultReported != minuete {
+					p.lastConsultReported = minuete
+					p.numConsultsCount = 0
+				}
+				if p.numConsultsCount < ctrl.RequestsPerMinuete {
+					p.numConsultsCount = p.numConsultsCount + 1
+					pi.Log.Infof("Consulting Guard %d/%d", p.numConsultsCount, ctrl.RequestsPerMinuete)
+					decission = p.consultOnRequest(rp)
+					//pi.Log.Infof("Guard said: %s", decission)
+				}
+			}
+		}
+	*/
 
 	/*
 		//decoded path
@@ -291,35 +303,37 @@ func (p *plug) screenRequest(req *http.Request) error {
 		console.log(unit, dataout);
 		postRequest("Path: "+fingerprint_path, "/eval", dataout, callback)
 	*/
-
-	return nil
 }
 
-func (p *plug) screenResponse(resp *http.Response) error {
-	rp := new(spec.RespProfile)
+func (p *plug) screenResponse(resp *http.Response, rp *spec.RespProfile) error {
 	rp.Profile(resp)
 	fmt.Println(rp.Marshal(0))
 	fmt.Println(p.wsGate.Configured)
 	ctrl := p.wsGate.Control
 	var decission string
 	if ctrl.Auto {
-		decission = p.wsGate.Learned.Resp.Decide(rp)
+		var description bytes.Buffer
+		for i, leanred := range p.wsGate.Learned {
+			decission = leanred.Resp.Decide(rp)
+			if decission == "" {
+				break
+			}
+			description.WriteString(fmt.Sprintf("  Learned[%d]: %s", i, decission))
+		}
+		if decission != "" {
+			// include all decissions!
+			decission = description.String()
+		}
 	} else {
 		decission = p.wsGate.Configured.Resp.Decide(rp)
 	}
-	if decission == "" {
-		if ctrl.Learn {
-			p.allowedPile.Resp.Add(rp)
-			p.reportAllow()
-		}
-	} else {
-		pi.Log.Infof("Alert HttpResponse: %s", decission)
-		//p.reportBlock(rp, decission)
-		//if !p.wsGate.Control.Block {
-		//	return errors.New(decission)
-		//}
-	}
 
+	if decission != "" {
+		pi.Log.Infof("Alert HttpResponse: %s", decission)
+		p.stats("RespNok")
+		return errors.New(decission)
+	}
+	p.stats("RespOk")
 	return nil
 }
 
@@ -369,35 +383,53 @@ func requestFilter(buf []byte) error {
 }
 
 func (p *plug) periodical(ctx context.Context) bool {
-	pp := new(spec.ProcessProfile)
+	//pp := new(spec.ProcessProfile)
+
+	index, okIndex := ctx.Value(ctxKey("ReqIndex")).(uint32)
+	if !okIndex {
+		pi.Log.Infof("%s ........... Blocked During Periodical! Missing context!", p.name)
+		return true
+	}
+	sp, spExists := p.ongoing[index]
+	if !spExists {
+		pi.Log.Infof("%s ........... Blocked During Periodical! Missing Session!", p.name)
+		return true
+	}
 
 	now := time.Now()
-	reqTime, okReqTime := ctx.Value(ctxKey("ReqTime")).(time.Time)
-	if !okReqTime {
-		reqTime = now
-	}
-	pp.Profile(reqTime, reqTime, now)
+	//reqTime, okReqTime := ctx.Value(ctxKey("ReqTime")).(time.Time)
+	//if !okReqTime {
+	//	reqTime = now
+	//}
+	pp := &sp.Process
+	fmt.Printf("sp.ReqTime %v now %v\n", sp.ReqTime, now)
+	pp.Profile(sp.ReqTime, sp.ReqTime, now)
 	fmt.Println(pp.Marshal(0))
 
 	ctrl := p.wsGate.Control
 	var decission string
 	if ctrl.Auto {
-		decission = p.wsGate.Learned.Process.Decide(pp)
+		var description bytes.Buffer
+		for i, leanred := range p.wsGate.Learned {
+			decission = leanred.Process.Decide(pp)
+			if decission == "" {
+				break
+			}
+			description.WriteString(fmt.Sprintf("  Learned[%d]: %s", i, decission))
+		}
+		if decission != "" {
+			// include all decissions!
+			decission = description.String()
+		}
 	} else {
 		decission = p.wsGate.Configured.Process.Decide(pp)
 	}
-	if decission == "" {
-		if ctrl.Learn {
-			p.allowedPile.Process.Add(pp)
-			p.reportAllow()
-		}
-	} else {
-		pi.Log.Infof("Alert while processing: %s", decission)
-		//p.reportBlock(pp, decission)
-		if !p.wsGate.Control.Block {
-			return true
-		}
+	if decission != "" {
+		pi.Log.Infof("Alert during periodical: %s", decission)
+		p.stats("PeriodicalNok")
+		return true
 	}
+	p.stats("PeriodicalOk")
 	return false
 }
 
@@ -406,10 +438,10 @@ func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 
 	pi.Log.Debugf("%s: ApproveRequest started", p.name)
 
-	if req.Header.Get("X-Block-Req") != "" {
-		pi.Log.Infof("%s ........... Blocked During Request! returning an error!", p.name)
-		return nil, errors.New("request blocked")
-	}
+	//if req.Header.Get("X-Block-Req") != "" {
+	//	pi.Log.Infof("%s ........... Blocked During Request! returning an error!", p.name)
+	//	return nil, errors.New("request blocked")
+	//}
 
 	for name, values := range req.Header {
 		// Loop over all values for the name.
@@ -417,20 +449,30 @@ func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 			pi.Log.Debugf("%s Request Header: %s: %s", p.name, name, value)
 		}
 	}
-
-	if p.screenRequest(req) != nil {
-		return nil, errors.New("secuirty blocked")
+	p.fetchConfig()
+	sp := new(spec.SessionProfile)
+	sp.ReqTime = time.Now()
+	if p.screenRequest(req, &sp.Req) != nil {
+		if p.wsGate.Control.Block {
+			return nil, errors.New("secuirty blocked")
+		} else {
+			sp.Alert = true
+		}
 	}
+	p.ongoing[p.index] = sp
 
 	newCtx, cancelFunction := context.WithCancel(req.Context())
-
-	newCtx = context.WithValue(newCtx, ctxKey("ReqTime"), time.Now())
+	newCtx = context.WithValue(newCtx, ctxKey("ReqIndex"), p.index)
 	req = req.WithContext(newCtx)
 
 	if p.periodical(newCtx) {
 		pi.Log.Infof("Blocked on periodical during reuqest!")
-		cancelFunction()
-		return nil, errors.New("secuirty blocked")
+		if p.wsGate.Control.Block {
+			delete(p.ongoing, p.index)
+			cancelFunction()
+			return nil, errors.New("secuirty blocked")
+		}
+		sp.Alert = true
 	}
 
 	timeoutStr := req.Header.Get("X-Block-Async")
@@ -450,29 +492,46 @@ func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 
 	pi.Log.Infof("%s ........... will asynchroniously block after %s", p.name, timeoutStr)
 
-	go func(newCtx context.Context, cancelFunction context.CancelFunc, req *http.Request, timeout time.Duration) {
+	go func(newCtx context.Context, cancelFunction context.CancelFunc, index uint32, req *http.Request, timeout time.Duration) {
 		ticker := time.NewTicker(5 * time.Second)
+		sp := p.ongoing[index]
 		for {
 			select {
 			case <-newCtx.Done():
 				ticker.Stop()
-				pi.Log.Infof("Done! %v", newCtx.Err())
+				if !sp.Alert {
+					pi.Log.Infof("Done - No Alert! %v", newCtx.Err())
+					p.stats("AlertOff")
+					p.pile.Pile(p.ongoing[index])
+					p.reportAllow()
+				} else {
+					pi.Log.Infof("Done - With Alert! %v", newCtx.Err())
+					p.stats("AlertOn")
+				}
+				delete(p.ongoing, index)
 				return
-			case <-time.After(timeout):
-				pi.Log.Infof("Timeout!")
+			case <-time.After(timeout): // maybe reimplement in periodical?
+				pi.Log.Infof("Timeout Processing Request!")
+				p.stats("Timeout")
 				ticker.Stop()
+				delete(p.ongoing, index)
 				cancelFunction()
 				return
 			case <-ticker.C:
 				if p.periodical(newCtx) {
-					pi.Log.Infof("Blocked while processing!")
-					ticker.Stop()
-					cancelFunction()
+					pi.Log.Infof("Blocked while processing during tick!")
+					if p.wsGate.Control.Block {
+						ticker.Stop()
+						delete(p.ongoing, p.index)
+						cancelFunction()
+						return
+					}
+					sp.Alert = true
 				}
 			}
 		}
-	}(newCtx, cancelFunction, req, timeout)
-
+	}(newCtx, cancelFunction, p.index, req, timeout)
+	p.index++
 	return req, nil
 }
 
@@ -481,21 +540,30 @@ func (p *plug) ApproveResponse(req *http.Request, resp *http.Response) (*http.Re
 
 	pi.Log.Infof("%s: ApproveResponse started", p.name)
 
-	pp := new(spec.ProcessProfile)
+	//pp := new(spec.ProcessProfile)
 
 	now := time.Now()
 	ctx := req.Context()
-	reqTime, okReqTime := ctx.Value(ctxKey("ReqTime")).(time.Time)
-	if !okReqTime {
-		reqTime = now
+	index, okIndex := ctx.Value(ctxKey("ReqIndex")).(uint32)
+	if !okIndex {
+		pi.Log.Infof("%s ........... Blocked During Response! Missing context!", p.name)
+		return nil, errors.New("missing context")
 	}
-	pp.Profile(reqTime, now, now)
-	fmt.Println(pp.Marshal(0))
+	sp, spExists := p.ongoing[index]
+	if !spExists {
+		pi.Log.Infof("%s ........... Blocked During Response! Missing Session!", p.name)
+		return nil, errors.New("missing session")
+	}
 
-	if req.Header.Get("X-Block-Resp") != "" {
-		pi.Log.Infof("%s ........... Blocked During Response! returning an error!", p.name)
-		return nil, errors.New("response blocked")
-	}
+	//reqTime, okReqTime := ctx.Value(ctxKey("ReqTime")).(time.Time)
+	//if !okReqTime {
+	//	reqTime = now
+	//}
+
+	//if req.Header.Get("X-Block-Resp") != "" {
+	//	pi.Log.Infof("%s ........... Blocked During Response! returning an error!", p.name)
+	//	return nil, errors.New("response blocked")
+	//}
 
 	for name, values := range resp.Header {
 		// Loop over all values for the name.
@@ -504,8 +572,25 @@ func (p *plug) ApproveResponse(req *http.Request, resp *http.Response) (*http.Re
 		}
 	}
 
-	if p.screenResponse(resp) != nil {
-		return nil, errors.New("secuirty blocked")
+	if p.screenResponse(resp, &sp.Resp) != nil {
+		if p.wsGate.Control.Block {
+			delete(p.ongoing, p.index)
+			return nil, errors.New("secuirty blocked")
+		} else {
+			sp.Alert = true
+		}
+	}
+
+	sp.Process.Profile(sp.ReqTime, now, now)
+	fmt.Println(sp.Process.Marshal(0))
+
+	if p.periodical(ctx) {
+		pi.Log.Infof("Blocked on periodical during response!")
+		if p.wsGate.Control.Block {
+			delete(p.ongoing, p.index)
+			return nil, errors.New("secuirty blocked")
+		}
+		sp.Alert = true
 	}
 
 	if testBodyHist && resp.Body != nil {
@@ -519,6 +604,7 @@ func (p *plug) ApproveResponse(req *http.Request, resp *http.Response) (*http.Re
 	return resp, nil
 }
 
+/*
 func (p *plug) consultOnRequest(reqProfile *spec.ReqProfile) string {
 	postBody, marshalErr := json.Marshal(reqProfile)
 	if marshalErr != nil {
@@ -558,6 +644,7 @@ func (p *plug) consultOnRequest(reqProfile *spec.ReqProfile) string {
 	pi.Log.Infof("wsgate consultOnRequest: approved!")
 	return ""
 }
+*/
 
 func (p *plug) reportAllowedPile(pile *spec.Pile) string {
 	postBody, marshalErr := json.Marshal(pile)
@@ -599,21 +686,17 @@ func (p *plug) reportAllowedPile(pile *spec.Pile) string {
 	return ""
 }
 
-func (p *plug) reportBlock(req *spec.ReqProfile, decission string) {
+func (p *plug) stats(key string) {
+	p.statistics[key]++
 	// build statistics on blocked requests
-	p.cycle--
-	if p.cycle <= 0 {
-		//p.ReportToGuard()
-		p.cycle = 100
-	}
 }
 
 func (p *plug) reportAllow() {
 	// send statistics on allowed requests
 	p.cycle--
 	if p.cycle <= 0 {
-		p.reportAllowedPile(&p.allowedPile)
-		p.allowedPile.Clear()
+		p.reportAllowedPile(&p.pile)
+		//p.pile.Clear()
 		p.cycle = 0
 	}
 }
@@ -701,9 +784,9 @@ func (p *plug) fetchConfig() {
 	if gurdianSpec.Configured == nil {
 		gurdianSpec.Configured = new(spec.Critiria)
 	}
-	if gurdianSpec.Learned == nil {
-		gurdianSpec.Learned = new(spec.Critiria)
-	}
+	//if gurdianSpec.Learned == nil {
+	//	gurdianSpec.Learned = make([]spec.Critiria, 0)
+	//}
 	p.wsGate = (*spec.WsGate)(gurdianSpec)
 	fmt.Printf("p.wsGate %v", p.wsGate)
 
@@ -768,6 +851,9 @@ func init() {
 	p := new(plug)
 	p.version = version
 	p.name = name
+	p.pile.Clear()
+	p.ongoing = make(map[uint32]*spec.SessionProfile)
+	p.statistics = make(map[string]uint32, 8)
 	pi.RegisterPlug(p)
 	fmt.Printf("WSGATE!!!! Ended Initializing!!!!!!!!!<<<<<<<<<<<__________________>>>>>>>>>>\n")
 }

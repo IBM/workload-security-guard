@@ -10,20 +10,68 @@ type U8Minmax struct {
 	Max uint8 `json:"max"`
 }
 
-type Set map[string]bool
+type Set struct {
+	List []string
+	m    map[string]bool
+}
+
 type U8MinmaxSlice []U8Minmax
 type Uint32Slice []uint32
 
-func (configSet Set) Decide(proileSet Set) string {
-	for k := range proileSet {
-		_, exists := configSet[k]
-		if !exists {
-			return fmt.Sprintf("Unexpected key %s in Set", k)
+func (p *Set) Add(v string) {
+	if !p.m[v] {
+		p.m[v] = true
+		p.List = append(p.List, v)
+
+	}
+}
+
+func (p *Set) Clear() {
+	p.m = make(map[string]bool)
+	p.List = make([]string, 0, 1)
+}
+
+func (p *Set) Append(a *Set) {
+	if p.m == nil {
+		p.m = make(map[string]bool, len(a.List))
+	}
+	if p.List == nil {
+		p.List = make([]string, len(a.List))
+	}
+	for _, v := range a.List {
+		if !p.m[v] {
+			p.m[v] = true
+			p.List = append(p.List, v)
 		}
+	}
+}
+
+func (p Set) Decide(s string) string {
+	_, exists := p.m[s]
+	if !exists {
+		return fmt.Sprintf("Unexpected key %s in Set", s)
 	}
 	return ""
 }
 
+func AddToSetFromList(list []string, set *Set) {
+	if set.m == nil {
+		set.m = make(map[string]bool, len(list))
+	}
+	if set.List == nil {
+		set.List = make([]string, len(list))
+	}
+	for _, v := range list {
+		if !set.m[v] {
+			set.m[v] = true
+			set.List = append(set.List, v)
+		}
+	}
+}
+
+func AddToListFromSet(set *Set, list *[]string) {
+	*list = append(*list, set.List...)
+}
 func (base Uint32Slice) Add(val Uint32Slice) Uint32Slice {
 	if missing := len(val) - len(base); missing > 0 {
 		// Dynamically allocate as many blockElements as needed for this config
@@ -110,6 +158,24 @@ func (mms U8MinmaxSlice) AddValExample(v uint8) U8MinmaxSlice {
 		}
 	}
 	return mms
+}
+
+func (mms *U8MinmaxSlice) Learn(list []uint8) {
+	min := uint8(0)
+	max := uint8(0)
+	if len(list) >= 0 {
+		min = list[0]
+		max = list[0]
+	}
+	for _, v := range list {
+		if min > v {
+			min = v
+		}
+		if max < v {
+			max = v
+		}
+	}
+	*mms = append(*mms, U8Minmax{min, max})
 }
 
 func (mms U8MinmaxSlice) Describe() string {

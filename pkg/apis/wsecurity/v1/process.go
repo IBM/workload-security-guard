@@ -77,16 +77,42 @@ func (p *ProcessPile) Clear() {
 	p.Udp6Peers.Clear()
 	p.Udplite6Peers.Clear()
 }
+func (p *ProcessPile) Append(a *ProcessPile) {
+	p.CompletionTime = append(p.CompletionTime, a.CompletionTime...)
+	p.ResponseTime = append(p.ResponseTime, a.ResponseTime...)
+	p.Tcp4Peers.Append(&a.Tcp4Peers)
+	p.Udp4Peers.Append(&a.Udp4Peers)
+	p.Udplite4Peers.Append(&a.Udplite4Peers)
+	p.Tcp6Peers.Append(&a.Tcp6Peers)
+	p.Udp6Peers.Append(&a.Udp6Peers)
+	p.Udplite6Peers.Append(&a.Udplite6Peers)
+}
 
 func (config *ProcessConfig) Reconcile() {
 	config.tcp4Peers = GetCidrsFromList(config.Tcp4Peers)
-	fmt.Printf("Reconcile config %v\n", config)
-	fmt.Printf("Reconcile config.tcp4Peers %v\n", config.tcp4Peers)
 	config.udp4Peers = GetCidrsFromList(config.Udp4Peers)
 	config.udplite4Peers = GetCidrsFromList(config.Udplite4Peers)
 	config.tcp6Peers = GetCidrsFromList(config.Tcp6Peers)
 	config.udp6Peers = GetCidrsFromList(config.Udp6Peers)
 	config.udplite6Peers = GetCidrsFromList(config.Udplite6Peers)
+}
+
+func (config *ProcessConfig) Learn(p *ProcessPile) {
+	config.tcp4Peers = GetCidrsFromIpList(p.Tcp4Peers.List)
+	config.udp4Peers = GetCidrsFromIpList(p.Udp4Peers.List)
+	config.udplite4Peers = GetCidrsFromIpList(p.Udplite4Peers.List)
+	config.tcp6Peers = GetCidrsFromIpList(p.Tcp6Peers.List)
+	config.udp6Peers = GetCidrsFromIpList(p.Udp6Peers.List)
+	config.udplite6Peers = GetCidrsFromIpList(p.Udplite6Peers.List)
+	config.Tcp4Peers = config.tcp4Peers.Strings()
+	config.Udp4Peers = config.udp4Peers.Strings()
+	config.Udplite4Peers = config.udplite4Peers.Strings()
+	config.Tcp6Peers = config.tcp6Peers.Strings()
+	config.Udp6Peers = config.udp6Peers.Strings()
+	config.Udplite6Peers = config.udplite6Peers.Strings()
+	config.CompletionTime.Learn(p.CompletionTime)
+	config.ResponseTime.Learn(p.ResponseTime)
+	fmt.Printf("Config %v\n", config)
 }
 
 func (config *ProcessConfig) Normalize() {
@@ -208,10 +234,9 @@ func (pp *ProcessProfile) Profile(reqTime time.Time, respTime time.Time, endTime
 	} else {
 		pp.ResponseTime = uint8(responseTime)
 	}
-
 }
-func (pp *ProcessProfile) Marshal(depth int) string {
 
+func (pp *ProcessProfile) Marshal(depth int) string {
 	var description bytes.Buffer
 	shift := strings.Repeat("  ", depth)
 	description.WriteString("{\n")
@@ -219,6 +244,31 @@ func (pp *ProcessProfile) Marshal(depth int) string {
 	description.WriteString(fmt.Sprintf("  ResponseTime: %d\n", pp.ResponseTime))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  CompletionTime: %d\n", pp.CompletionTime))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Tcp4Peers: %v\n", pp.Tcp4Peers))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Udp4Peers: %v\n", pp.Udp4Peers))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Udplite4Peers: %v\n", pp.Udplite4Peers))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Tcp6Peers: %v\n", pp.Tcp6Peers))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Udp6Peers: %v\n", pp.Udp6Peers))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Udplite6Peers: %v\n", pp.Udplite6Peers))
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
+func (pp *ProcessPile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  ResponseTime: %v\n", pp.ResponseTime))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  CompletionTime: %v\n", pp.CompletionTime))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Tcp4Peers: %v\n", pp.Tcp4Peers))
 	description.WriteString(shift)

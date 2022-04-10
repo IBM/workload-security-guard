@@ -39,6 +39,17 @@ func (p *KeyValPile) Clear() {
 	p.Vals = make(map[string]*SimpleValPile)
 }
 
+func (p *KeyValPile) Append(a *KeyValPile) {
+	for key, kv_profile := range a.Vals {
+		key_pile, exists := p.Vals[key]
+		if !exists {
+			key_pile = new(SimpleValPile)
+			p.Vals[key] = key_pile
+		}
+		key_pile.Append(kv_profile)
+	}
+}
+
 // Profile a generic map of key vals where we expect:
 // keys belonging to some contstant list of keys
 // vals have some defined charactaristics
@@ -80,6 +91,36 @@ func (kvp *KeyValProfile) Marshal(depth int) string {
 	description.WriteString(shift)
 	description.WriteString("}\n")
 	return description.String()
+}
+
+func (kvp *KeyValPile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+
+	if len(kvp.Vals) > 0 {
+		description.WriteString(shift)
+		description.WriteString("  Vals: {\n")
+		for k, v := range kvp.Vals {
+			description.WriteString(shift)
+			description.WriteString(fmt.Sprintf("  , %s: %s", k, v.Marshal(depth+2)))
+		}
+		description.WriteString(shift)
+		description.WriteString("  }\n")
+	}
+
+	description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
+func (config *KeyValConfig) Learn(p *KeyValPile) {
+	config.Vals = make(map[string]*SimpleValConfig)
+	for k, v := range p.Vals {
+		svc := new(SimpleValConfig)
+		svc.Learn(v)
+		config.Vals[k] = svc
+	}
 }
 
 func (config *KeyValConfig) Normalize() {

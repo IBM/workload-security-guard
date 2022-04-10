@@ -5,7 +5,6 @@ import {Box, Button} from '@mui/material';
 
 function OnOff(props) {
   var { data, keyId, onDataChange, name } = props;
-    
   //const [value, setValue] = React.useState(data);
   var value = data
 
@@ -17,7 +16,7 @@ function OnOff(props) {
   };
   var color = value ? "success":"error"
   var variant = value ? "contained":"outlined"
-  console.log("color", color)
+  //console.log("color", color)
   return (
     <Box >
       <Button
@@ -31,4 +30,3 @@ function OnOff(props) {
   );
 }
 export {OnOff}
-// 

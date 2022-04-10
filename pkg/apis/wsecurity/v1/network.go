@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net"
 	"strconv"
+	"strings"
 )
 
 type IpPile struct {
@@ -21,6 +22,9 @@ type IpSet struct {
 }
 
 func (ipp *IpPile) Add(ips *IpSet) {
+	if ipp.m == nil {
+		ipp.m = make(map[string]bool, len(ips.list))
+	}
 	for ip := range ips.m {
 		if !ipp.m[ip] {
 			ipp.m[ip] = true
@@ -33,6 +37,15 @@ func (ipp *IpPile) Clear() {
 	ipp.List = make([]string, 0, 1)
 }
 
+func (ipp *IpPile) Append(a *IpPile) {
+	for _, ip := range a.List {
+		if !ipp.m[ip] {
+			ipp.m[ip] = true
+			ipp.List = append(ipp.List, ip)
+		}
+	}
+}
+
 func (cidr CidrSet) Decide(ips *IpSet) string {
 	var ok bool
 	if ips == nil {
@@ -40,6 +53,9 @@ func (cidr CidrSet) Decide(ips *IpSet) string {
 	}
 	fmt.Printf("func (%v) Decide(%v)\n", cidr, ips)
 	for _, ip := range ips.list {
+		if ip.IsUnspecified() || ip.IsLoopback() || ip.IsPrivate() {
+			continue
+		}
 		ok = false
 		for _, subnet := range cidr {
 			if subnet.Contains(ip) {
@@ -96,7 +112,7 @@ NextLine:
 
 		// 2. Try to process ipstr
 		//    We return nil if no more IPs or if ip has bad format
-		fmt.Printf("Proccessing IP %s\n", ipstr)
+		//fmt.Printf("Proccessing IP %s\n", ipstr)
 
 		var ip net.IP
 		if len(ipstr) == 8 { //ipv4
@@ -106,7 +122,7 @@ NextLine:
 				return nil, nil
 			}
 			binary.LittleEndian.PutUint32(ip, uint32(v))
-			fmt.Printf("Proccessed IPv4 %s\n", ip.String())
+			//fmt.Printf("Proccessed IPv4 %s\n", ip.String())
 		} else if len(ipstr) == 32 { //ipv6
 			ip = make(net.IP, net.IPv6len)
 			for i := 0; i < 16; i += 4 {
@@ -117,7 +133,7 @@ NextLine:
 				binary.LittleEndian.PutUint32(ip[i:i+4], uint32(u))
 				ipstr = ipstr[8:] //skip 8 bytes
 			}
-			fmt.Printf("Proccessed IPv6 %s\n", ip.String())
+			//fmt.Printf("Proccessed IPv6 %s\n", ip.String())
 		} else {
 			fmt.Printf("Proccessed skipped IP structrue\n")
 			return nil, nil
@@ -160,7 +176,7 @@ func IpSetFromIp(ip net.IP) (ips *IpSet) {
 	ips.list = make([]net.IP, 0, 1)
 	ips.m[ip.String()] = true
 	if ip != nil {
-		ips.list[0] = ip
+		ips.list = append(ips.list, ip)
 	}
 	return
 }
@@ -218,28 +234,59 @@ func (in CidrSet) DeepCopyInto(out *CidrSet) {
 	(*out) = cpy
 }
 
+func (cidrs CidrSet) Strings() (s []string) {
+	s = make([]string, len(cidrs))
+	for i, cidr := range cidrs {
+		s[i] = cidr.String()
+	}
+	return
+}
+
+func GetCidrsFromIpList(list []string) CidrSet {
+	cidr := make([]net.IPNet, len(list))
+	var n int
+	var ipNet *net.IPNet
+	var err error
+	for _, v := range list {
+		if strings.Contains(v, ":") {
+			_, ipNet, err = net.ParseCIDR(v + "/128")
+		} else {
+			_, ipNet, err = net.ParseCIDR(v + "/32")
+		}
+		if err == nil {
+			fmt.Printf("CIDRS found CIDR %v\n", ipNet)
+
+			cidr[n].IP = make(net.IP, len(ipNet.IP))
+			cidr[n].Mask = make(net.IPMask, len(ipNet.Mask))
+			copy(cidr[n].IP, ipNet.IP)
+			copy(cidr[n].Mask, ipNet.Mask)
+			n++
+			continue
+		}
+		fmt.Printf("Ilegal cidr %s is skipped during GetCidrsFromList\n", v)
+	}
+	fmt.Printf("CIDRS %v\n", cidr)
+	return cidr
+}
+
 func GetCidrsFromList(list []string) CidrSet {
 	cidr := make([]net.IPNet, len(list))
-	fmt.Printf("Legal cidr %v len %d during GetCidrsFromList\n", cidr, len(cidr))
 	var n int
 	for _, v := range list {
 		_, ipNet, err := net.ParseCIDR(v)
-		if err != nil {
-			fmt.Printf("Ilegal cidr %s is skipped during GetCidrsFromList\n", v)
+		if err == nil {
+			fmt.Printf("CIDRS found CIDR %v\n", ipNet)
+
+			cidr[n].IP = make(net.IP, len(ipNet.IP))
+			cidr[n].Mask = make(net.IPMask, len(ipNet.Mask))
+			copy(cidr[n].IP, ipNet.IP)
+			copy(cidr[n].Mask, ipNet.Mask)
+			n++
 			continue
 		}
-		fmt.Printf("Legal cidr %s added (%v) during GetCidrsFromList\n", v, ipNet)
-		cidr[n].IP = make(net.IP, len(ipNet.IP))
-		cidr[n].Mask = make(net.IPMask, len(ipNet.Mask))
-		copy(cidr[n].IP, ipNet.IP)
-		copy(cidr[n].Mask, ipNet.Mask)
-		fmt.Printf("Legal cidr[n] %v (n=%d) during GetCidrsFromList\n", cidr[n], n)
-
-		fmt.Printf("Legal cidr %v len %d during GetCidrsFromList\n", cidr, len(cidr))
-		n++
+		fmt.Printf("Ilegal cidr %s is skipped during GetCidrsFromList\n", v)
 	}
-	cidr = cidr[:n]
-	fmt.Printf("Cidrs %v after CopyCidrFromList\n", cidr)
+	fmt.Printf("CIDRS %v\n", cidr)
 	return cidr
 
 }

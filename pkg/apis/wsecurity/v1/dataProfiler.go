@@ -193,13 +193,13 @@ func NameFlags(f uint32) string {
 
 func NewSimpleValConfig(spaces, unicodes, nonreadables, letters, digits, specialChars, sequences uint8) *SimpleValConfig {
 	svc := new(SimpleValConfig)
-	svc.Spaces = make([]U8Minmax, 0, 1)
-	svc.Unicodes = make([]U8Minmax, 0, 1)
-	svc.NonReadables = make([]U8Minmax, 0, 1)
-	svc.Letters = make([]U8Minmax, 0, 1)
-	svc.Digits = make([]U8Minmax, 0, 1)
-	svc.SpecialChars = make([]U8Minmax, 0, 1)
-	svc.Sequences = make([]U8Minmax, 0, 1)
+	svc.Spaces = make([]U8Minmax, 1)
+	svc.Unicodes = make([]U8Minmax, 1)
+	svc.NonReadables = make([]U8Minmax, 1)
+	svc.Letters = make([]U8Minmax, 1)
+	svc.Digits = make([]U8Minmax, 1)
+	svc.SpecialChars = make([]U8Minmax, 1)
+	svc.Sequences = make([]U8Minmax, 1)
 	//svc.Words = make([]U8Minmax, 0, 1)
 	//svc.Numbers = make([]U8Minmax, 0, 1)
 
@@ -231,6 +231,19 @@ func convert32To64(vL uint32, vH uint32) (v uint64) {
 	return
 }
 */
+
+func (config *SimpleValConfig) Learn(p *SimpleValPile) {
+	config.Digits.Learn(p.Digits)
+	config.Spaces.Learn(p.Spaces)
+	config.Unicodes.Learn(p.Unicodes)
+	config.NonReadables.Learn(p.NonReadables)
+	config.Letters.Learn(p.Letters)
+	config.SpecialChars.Learn(p.SpecialChars)
+	config.Sequences.Learn(p.Sequences)
+	config.Flags = p.Flags
+	config.UnicodeFlags = p.UnicodeFlags
+}
+
 func (config *SimpleValConfig) Normalize() {
 	config.Digits = append(config.Digits, U8Minmax{0, 0})
 	config.Spaces = append(config.Spaces, U8Minmax{0, 0})
@@ -300,10 +313,31 @@ func (p *SimpleValPile) Add(svp *SimpleValProfile) {
 	p.SpecialChars = append(p.SpecialChars, svp.SpecialChars)
 	p.Flags |= svp.Flags
 	for i := 0; i < len(p.UnicodeFlags); i++ {
-		p.UnicodeFlags[i] |= svp.UnicodeFlags[i]
+		if len(svp.UnicodeFlags) > i {
+			p.UnicodeFlags[i] |= svp.UnicodeFlags[i]
+		}
 	}
 	for i := len(p.UnicodeFlags); i < len(svp.UnicodeFlags); i++ {
 		p.UnicodeFlags = append(p.UnicodeFlags, svp.UnicodeFlags[i])
+	}
+}
+
+func (p *SimpleValPile) Append(a *SimpleValPile) {
+	p.Digits = append(p.Digits, a.Digits...)
+	p.Letters = append(p.Letters, a.Letters...)
+	p.Sequences = append(p.Sequences, a.Sequences...)
+	p.Spaces = append(p.Spaces, a.Spaces...)
+	p.Unicodes = append(p.Unicodes, a.Unicodes...)
+	p.NonReadables = append(p.NonReadables, a.NonReadables...)
+	p.SpecialChars = append(p.SpecialChars, a.SpecialChars...)
+	p.Flags |= a.Flags
+	for i := 0; i < len(p.UnicodeFlags); i++ {
+		if len(a.UnicodeFlags) > i {
+			p.UnicodeFlags[i] |= a.UnicodeFlags[i]
+		}
+	}
+	for i := len(p.UnicodeFlags); i < len(a.UnicodeFlags); i++ {
+		p.UnicodeFlags = append(p.UnicodeFlags, a.UnicodeFlags[i])
 	}
 }
 
@@ -537,6 +571,33 @@ func (svp *SimpleValProfile) Marshal(depth int) string {
 	//description.WriteString(shift)
 	//description.WriteString(fmt.Sprintf("  Numbers: %d,\n", svp.Numbers))
 	//description.WriteString(shift)
+	description.WriteString("}\n")
+	return description.String()
+}
+
+func (svp *SimpleValPile) Marshal(depth int) string {
+	var description bytes.Buffer
+	shift := strings.Repeat("  ", depth)
+	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Flags: 0x%x,\n", svp.Flags))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  UnicodeFlags: %s,\n", svp.UnicodeFlags.Marshal()))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Spaces: %v,\n", svp.Spaces))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Unicodes: %v,\n", svp.Unicodes))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  NonReadables: %v,\n", svp.NonReadables))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Letters: %v,\n", svp.Letters))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Digits: %v,\n", svp.Digits))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  SpecialChars: %v,\n", svp.SpecialChars))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Sequences: %v,\n", svp.Sequences))
+	description.WriteString(shift)
 	description.WriteString("}\n")
 	return description.String()
 }

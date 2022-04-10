@@ -11,6 +11,7 @@ function SimpleVal(props) {
   var { data, onDataChange, nodeId, keyId, name } = props;
   console.log("SimpleVal data", data, name)
   
+
   if (!data.digits) data.digits = []
   if (!data.letters) data.letters = []
   //if (!data.runes) data.runes = []
@@ -101,7 +102,7 @@ function SimpleVal(props) {
         <TreeItem nodeId={nodeId+">Counters"} label={"Rune Counters"}>
           <U8MinmaxSlice data={data.digits} nodeId={nodeId+">Digits"} name="Digits 0-9" description="Number of digits (runes 0-9)" onDataChange={onDigitsChange}></U8MinmaxSlice>
           <U8MinmaxSlice data={data.letters} nodeId={nodeId+">Letters"} name="Letters A-Z a-z" description="Number of letters (runes A-Z a-z)" onDataChange={onLettersChange}></U8MinmaxSlice>
-          < U8MinmaxSlice data={data.runes} nodeId={nodeId+">Spaces"} name="Spaces" description="Number of space runes" onDataChange={onSpacesChange}></U8MinmaxSlice>
+          < U8MinmaxSlice data={data.spaces} nodeId={nodeId+">Spaces"} name="Spaces" description="Number of space runes" onDataChange={onSpacesChange}></U8MinmaxSlice>
           <U8MinmaxSlice data={data.schars} nodeId={nodeId+">SpecialChars"} name="Special Chars" description="Number of Special Charcter runes" onDataChange={onSpecialCharsChange}></U8MinmaxSlice>
           <U8MinmaxSlice data={data.unicodes} nodeId={nodeId+">Unicodes"} name="Unicodes" description="Number of Unicode runes" onDataChange={onUnicodesChange}></U8MinmaxSlice>
           <U8MinmaxSlice data={data.nonreadables} nodeId={nodeId+">NonReadables"} name="Non Readables" description="Number of Non Readable runes" onDataChange={onNonReadablesChange}></U8MinmaxSlice>

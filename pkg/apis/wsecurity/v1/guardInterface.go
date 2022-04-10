@@ -31,9 +31,9 @@ type Critiria struct {
 }
 
 type WsGate struct {
-	Configured *Critiria `json:"configured"`        // configrued critiria
-	Learned    *Critiria `json:"learned,omitempty"` // Learned citiria
-	Control    Ctrl      `json:"control"`           // Control
+	Configured *Critiria   `json:"configured"`        // configrued critiria
+	Learned    []*Critiria `json:"learned,omitempty"` // Learned citiria
+	Control    Ctrl        `json:"control"`           // Control
 }
 
 func (g *WsGate) Reconcile() {
@@ -41,7 +41,9 @@ func (g *WsGate) Reconcile() {
 		g.Configured.Reconcile()
 	}
 	if g.Learned != nil {
-		g.Learned.Reconcile()
+		for _, learned := range g.Learned {
+			learned.Reconcile()
+		}
 	}
 	g.Control.Reconcile()
 }
@@ -56,13 +58,22 @@ func (g *WsGate) Marshal(depth int) string {
 		description.WriteString(shift)
 	}
 	if g.Learned != nil {
-		description.WriteString(fmt.Sprintf("  Learned: %s", g.Learned.Marshal(depth+1)))
-		description.WriteString(shift)
+		for i, leanred := range g.Learned {
+			description.WriteString(fmt.Sprintf("  Learned[%d]: %s", i, leanred.Marshal(depth+1)))
+			description.WriteString(shift)
+		}
 	}
 	description.WriteString(fmt.Sprintf("  Control: %s", g.Control.Marshal(depth+1)))
 	description.WriteString(shift)
 	description.WriteString("}\n")
 	return description.String()
+}
+
+func (c *Critiria) Learn(p *Pile) {
+	c.Req.Learn(&p.Req)
+	c.Resp.Learn(&p.Resp)
+	c.Process.Learn(&p.Process)
+	fmt.Printf("Critiria %v\n", c)
 }
 
 func (c *Critiria) Reconcile() {

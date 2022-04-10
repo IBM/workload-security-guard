@@ -51,7 +51,7 @@ func main() {
 	var h http.Handler = proxy
 
 	// Hook using RoundTripper
-	os.Setenv("WSGATE_GUARD_URL", "http://127.0.0.1:8082")
+	os.Setenv("WSGATE_GUARD_URL", "http://127.0.0.1:8888")
 	os.Setenv("RTPLUGS", "wsgate")
 	os.Setenv("SERVING_NAMESPACE", "default")
 	os.Setenv("SERVING_SERVICE", "myserver")

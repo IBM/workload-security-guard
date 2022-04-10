@@ -61,6 +61,7 @@ function Req(props) {
   var methods = ["GET", "POST", "PUT", "HEAD", "PATCH", "DELETE", "CONNECT", "OPTIONS", "TRACE" ]
   var protocols = ["HTTP/1.0", "HTTP/1.1",  "HTTP/2"]
 
+  console.log("data.method", data.metho)
 return (
     <TreeItem nodeId={nodeId} label={name} sx={{ textAlign: "start"}}>
         <Selection data={data.method} nodeId={nodeId+">Method"} name="Method" selection={methods} onDataChange={handleMethodChange}></Selection>
