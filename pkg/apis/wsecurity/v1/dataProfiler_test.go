@@ -12,11 +12,11 @@ Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem
 Why do we use it?
 `
 
-var flags1 uint32 = uint32(92052353)
+var flags1 uint32 = uint32(0b100000000010000010100010000001)
 
 func TestDescriptionSimpleVals(t *testing.T) {
 	t.Run("LoremIpsum", func(t *testing.T) {
-		fmt.Printf("TestDescriptionSimpleVals: %s\n", NameFlags(0xFFFFFFFF))
+		fmt.Printf("TestDescriptionSimpleVals: %s\n", NameFlags(0b101011111001001101110000001))
 	})
 
 }
@@ -99,26 +99,26 @@ func TestProfileSimpleVals(t *testing.T) {
 		if svp.Flags != flags1 {
 			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags1)
 		}
-		if svp.Spaces != 255 {
-			t.Errorf("ProfileSimpleVal() Spaces = %v, want %v", svp.Spaces, 255)
+		if svp.Spaces != 97 {
+			t.Errorf("ProfileSimpleVal() Spaces = %v, want %v", svp.Spaces, 97)
 		}
-		if svp.NonReadables != 255 {
-			t.Errorf("ProfileSimpleVal() NonReadables = %v, want %v", svp.NonReadables, 255)
+		if svp.NonReadables != 4 {
+			t.Errorf("ProfileSimpleVal() NonReadables = %v, want %v", svp.NonReadables, 4)
 		}
-		if svp.Unicodes != 255 {
-			t.Errorf("ProfileSimpleVal() Unicodes = %v, want %v", svp.Unicodes, 255)
+		if svp.Unicodes != 0 {
+			t.Errorf("ProfileSimpleVal() Unicodes = %v, want %v", svp.Unicodes, 0)
 		}
 		if svp.Letters != 255 {
 			t.Errorf("ProfileSimpleVal() Letters = %v, want %v", svp.Letters, 255)
 		}
 		if svp.Digits != 8 {
-			t.Errorf("ProfileSimpleVal() Digits = %v, want %v", svp.Digits, 255)
+			t.Errorf("ProfileSimpleVal() Digits = %v, want %v", svp.Digits, 8)
 		}
 		if svp.SpecialChars != 11 {
-			t.Errorf("ProfileSimpleVal() SpecialChars = %v, want %v", svp.SpecialChars, 255)
+			t.Errorf("ProfileSimpleVal() SpecialChars = %v, want %v", svp.SpecialChars, 11)
 		}
-		if svp.Sequences != 255 {
-			t.Errorf("ProfileSimpleVal() Sequences = %v, want %v", svp.Sequences, 103)
+		if svp.Sequences != 214 {
+			t.Errorf("ProfileSimpleVal() Sequences = %v, want %v", svp.Sequences, 214)
 		}
 		//if svp.Words != 255 {
 		//	t.Errorf("ProfileSimpleVal() Words = %v, want %v", svp.Words, 101)
@@ -139,45 +139,103 @@ func TestProfileSimpleVals(t *testing.T) {
 			svp := new(SimpleValProfile)
 			svp.Profile(string(r))
 			var flags uint32
+			// Slots and counters for AsciiDaya:
+			// 0-31 (32) nonReadableRCharCounter
+			// 32-47 (16) slots 0-15 respectivly
+			// 48-57 (10) digitCounter
+			// 58-64 (6) slots 16-22
+			// 65-90 (26) smallLetterCounter
+			// 91-96 (6) slots 23-28
+			// 97-122 (26) capitalLetterCounter
+			// 123-126 (4) slots 29-32
+			// 127 (1) nonReadableRCharCounter
+			// Slots:
+			// <SPACE> ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~
+			//    0    1 2 3 4 5 6 7 8 8 9 0 1 2 3 4 5 6 7 8 7 9 0 1 2 1 3 4 5 6 7 6 9 0 1 2
+			var notSpecial bool
+
 			if c < 32 { //0-31
 				flags |= 1 << NonReadableCharSlot
-			} else if c < 33 { //32 space
-				flags |= 1
-			} else if c < 48 { //32-47
-				slot := uint(c - 32)
-				flags |= 1 << slot
+			} else {
+				switch c {
+				case 32: // SPACE
+					flags |= 1
+				case 33: // !
+					flags |= 1 << 1
+				case 34: // "
+					flags |= 1 << 2
+				case 35: // #
+					flags |= 1 << 3
+				case 36: // $
+					flags |= 1 << 4
+				case 37: // %
+					flags |= 1 << 5
+				case 38: // &
+					flags |= 1 << 6
+				case 39: // '
+					flags |= 1 << 7
+				case 40: // (
+					flags |= 1 << 8
+				case 41: // )
+					flags |= 1 << 8
+				case 42: // *
+					flags |= 1 << 9
+				case 43: // +
+					flags |= 1 << 10
+				case 44: // ,
+					flags |= 1 << 11
+				case 45: // -
+					flags |= 1 << 12
+				case 46: // .
+					flags |= 1 << 13
+				case 47: // /
+					flags |= 1 << 14
+				case 58: // :
+					flags |= 1 << 15
+				case 59: // ;
+					flags |= 1 << 16
+				case 60: // <
+					flags |= 1 << 17
+				case 61: // =
+					flags |= 1 << 18
+				case 62: // >
+					flags |= 1 << 17
+				case 63: // ?
+					flags |= 1 << 19
+				case 64: // @
+					flags |= 1 << 20
+				case 91: // [
+					flags |= 1 << 22
+				case 92: // \
+					flags |= 1 << 21
+				case 93: // ]
+					flags |= 1 << 22
+				case 94: // ^
+					flags |= 1 << 23
+				case 95: // _
+					flags |= 1 << 24
+				case 96: // `
+					flags |= 1 << 25
+				case 122: // {
+					flags |= 1 << 27
+				case 124: // |
+					flags |= 1 << 26
+				case 125: // }
+					flags |= 1 << 27
+				case 126: // ~
+					flags |= 1 << 28
+				default:
+					notSpecial = true
+				}
+			}
+			if !notSpecial {
 				specialCharCounter++
-			} else if c < 58 { //48-57
-				digitCounter++
-				//	flags |= 1 << DigitSlot
-			} else if c < 65 { //58-64
-				slot := uint(c - 58 + 16)
-				flags |= 1 << slot
-				specialCharCounter++
-			} else if c < 91 { //65-90
-				letterCounter++
-				//	flags |= 1 << LetterSlot
-			} else if c < 97 { //91-96
-				slot := uint(c - 91 + 23)
-				flags |= 1 << slot
-				specialCharCounter++
-			} else if c < 123 { //97-122
-				letterCounter++
-				//	flags |= 1 << LetterSlot
-			} else if c < 127 { //123-126
-				slot := uint(c - 123 + 29)
-				flags |= 1 << slot
-				specialCharCounter++
-			} else if c < 128 { //127
-				flags |= 1 << NonReadableCharSlot
-			} //else { //unicode
-			//	flags |= 1 << UnicodeCharSlot
-			//}
+			}
 			if svp.Flags != flags {
 				t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
 			}
-			if svp.Spaces != 1 {
-				t.Errorf("ProfileSimpleVal() Spaces = %d instead of 1", svp.Spaces)
+			if svp.Spaces != 0 {
+				t.Errorf("ProfileSimpleVal() Spaces = %d instead of 0", svp.Spaces)
 			}
 			if svp.Letters != uint8(letterCounter) {
 				t.Errorf("ProfileSimpleVal() Letters = %d instead of %d", svp.Letters, letterCounter)

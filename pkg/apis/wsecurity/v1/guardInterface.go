@@ -17,14 +17,16 @@ import (
 //          <Allow>		// used for example when ReqConfig is not ready
 // <Block>
 type Ctrl struct { // If guard needs to be consulted but is unavaliable => block
+	Alert              bool   `json:"ignore"`  // If true, use critiria to identify alerts
+	Block              bool   `json:"block"`   // If true, block on alert.
+	Learn              bool   `json:"learn"`   // If true, and no alert idetified, report piles
+	Auto               bool   `json:"auto"`    // If true, use learned critiria rather than configured critiria
 	Consult            bool   `json:"consult"` // False means never consult guard, all decissions are local
 	RequestsPerMinuete uint16 `json:"rpm"`     // Maximum rpm allows for consulting guard
-	Block              bool   `json:"block"`   // If false, alert only
-	Learn              bool   `json:"learn"`   // If false, allowed piles are not processed
-	Auto               bool   `json:"auto"`    // If true, use learned critiria rather than configured critiria
 }
 
 type Critiria struct {
+	Active  bool          `json:"active"`  // If not active, Critiria ignored
 	Req     ReqConfig     `json:"req"`     // Request critiria for blocking/allowing
 	Resp    RespConfig    `json:"resp"`    // Response critiria for blocking/allowing
 	Process ProcessConfig `json:"process"` // Processing critiria for blocking/allowing
@@ -75,6 +77,13 @@ func (c *Critiria) Learn(p *Pile) {
 	c.Process.Learn(&p.Process)
 	fmt.Printf("Critiria %v\n", c)
 }
+func (c *Critiria) Merge(mc *Critiria) {
+	c.Active = c.Active || mc.Active
+	c.Req.Merge(&mc.Req)
+	c.Resp.Merge(&mc.Resp)
+	c.Process.Merge(&mc.Process)
+	fmt.Printf("Merged Critiria %v\n", c)
+}
 
 func (c *Critiria) Reconcile() {
 	c.Req.Reconcile()
@@ -111,13 +120,15 @@ func (c *Ctrl) Marshal(depth int) string {
 	shift := strings.Repeat("  ", depth)
 	description.WriteString("{\n")
 	description.WriteString(shift)
-	description.WriteString(fmt.Sprintf("  Auto: %v", c.Auto))
+	description.WriteString(fmt.Sprintf("  Alert: %v", c.Alert))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Block: %v", c.Block))
 	description.WriteString(shift)
-	description.WriteString(fmt.Sprintf("  Consult: %v", c.Consult))
-	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Learn: %v", c.Learn))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Auto: %v", c.Auto))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Consult: %v", c.Consult))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  RPM: %v", c.RequestsPerMinuete))
 	description.WriteString(shift)

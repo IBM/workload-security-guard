@@ -115,6 +115,24 @@ func (config *ProcessConfig) Learn(p *ProcessPile) {
 	fmt.Printf("Config %v\n", config)
 }
 
+func (config *ProcessConfig) Merge(m *ProcessConfig) {
+	config.tcp4Peers = GetCidrsFromIpList(m.Tcp4Peers)
+	config.udp4Peers = GetCidrsFromIpList(m.Udp4Peers)
+	config.udplite4Peers = GetCidrsFromIpList(m.Udplite4Peers)
+	config.tcp6Peers = GetCidrsFromIpList(m.Tcp6Peers)
+	config.udp6Peers = GetCidrsFromIpList(m.Udp6Peers)
+	config.udplite6Peers = GetCidrsFromIpList(m.Udplite6Peers)
+	config.Tcp4Peers = config.tcp4Peers.Strings()
+	config.Udp4Peers = config.udp4Peers.Strings()
+	config.Udplite4Peers = config.udplite4Peers.Strings()
+	config.Tcp6Peers = config.tcp6Peers.Strings()
+	config.Udp6Peers = config.udp6Peers.Strings()
+	config.Udplite6Peers = config.udplite6Peers.Strings()
+	config.CompletionTime.Merge(m.CompletionTime)
+	config.ResponseTime.Merge(m.ResponseTime)
+	fmt.Printf("Config %v\n", config)
+}
+
 func (config *ProcessConfig) Normalize() {
 	config.ResponseTime = append(config.ResponseTime, U8Minmax{0, 0})
 	config.CompletionTime = append(config.CompletionTime, U8Minmax{0, 0})

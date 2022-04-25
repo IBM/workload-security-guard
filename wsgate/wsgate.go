@@ -128,25 +128,35 @@ func (p *plug) screenRequest(req *http.Request, rp *spec.ReqProfile) error {
 	ctrl := p.wsGate.Control
 	if ctrl.Auto {
 		var description bytes.Buffer
+		var result string
 		for i, leanred := range p.wsGate.Learned {
-			decission = leanred.Req.Decide(rp)
-			if decission == "" {
+			if !leanred.Active {
+				continue
+			}
+			result = leanred.Req.Decide(rp)
+			if result == "" {
 				break
 			}
-			description.WriteString(fmt.Sprintf("  Learned[%d]: %s", i, decission))
+			description.WriteString(fmt.Sprintf("  Learned[%d]: %s", i, result))
 		}
-		if decission != "" {
+		if result != "" {
 			// include all decissions!
 			decission += description.String()
 		}
-	} else {
-		decission += p.wsGate.Configured.Req.Decide(rp)
+	} else { // Manual
+		if (p.wsGate.Configured != nil) && p.wsGate.Configured.Active {
+			decission += p.wsGate.Configured.Req.Decide(rp)
+		}
+
 	}
-	if decission != "" {
-		pi.Log.Infof("Alert HttpRequest: %s", decission)
-		p.stats("ReqNok")
-		return errors.New(decission)
+	if ctrl.Alert {
+		if decission != "" {
+			pi.Log.Infof("Alert HttpRequest: %s", decission)
+			p.stats("ReqNok")
+			return errors.New(decission)
+		}
 	}
+
 	p.stats("ReqOk")
 	return nil
 	/*
@@ -313,25 +323,32 @@ func (p *plug) screenResponse(resp *http.Response, rp *spec.RespProfile) error {
 	var decission string
 	if ctrl.Auto {
 		var description bytes.Buffer
+		var result string
 		for i, leanred := range p.wsGate.Learned {
-			decission = leanred.Resp.Decide(rp)
-			if decission == "" {
+			if !leanred.Active {
+				continue
+			}
+			result = leanred.Resp.Decide(rp)
+			if result == "" {
 				break
 			}
-			description.WriteString(fmt.Sprintf("  Learned[%d]: %s", i, decission))
+			description.WriteString(fmt.Sprintf("  Learned[%d]: %s", i, result))
 		}
-		if decission != "" {
+		if result != "" {
 			// include all decissions!
 			decission = description.String()
 		}
 	} else {
-		decission = p.wsGate.Configured.Resp.Decide(rp)
+		if (p.wsGate.Configured != nil) && p.wsGate.Configured.Active {
+			decission = p.wsGate.Configured.Resp.Decide(rp)
+		}
 	}
-
-	if decission != "" {
-		pi.Log.Infof("Alert HttpResponse: %s", decission)
-		p.stats("RespNok")
-		return errors.New(decission)
+	if ctrl.Alert {
+		if decission != "" {
+			pi.Log.Infof("Alert HttpResponse: %s", decission)
+			p.stats("RespNok")
+			return errors.New(decission)
+		}
 	}
 	p.stats("RespOk")
 	return nil
@@ -383,24 +400,19 @@ func requestFilter(buf []byte) error {
 }
 
 func (p *plug) periodical(ctx context.Context) bool {
-	//pp := new(spec.ProcessProfile)
-
+	// Find the session
 	index, okIndex := ctx.Value(ctxKey("ReqIndex")).(uint32)
-	if !okIndex {
-		pi.Log.Infof("%s ........... Blocked During Periodical! Missing context!", p.name)
-		return true
+	if !okIndex { // This should never happen!
+		pi.Log.Warnf("%s ........... Periodical missing context!", p.name)
+		return false
 	}
 	sp, spExists := p.ongoing[index]
-	if !spExists {
-		pi.Log.Infof("%s ........... Blocked During Periodical! Missing Session!", p.name)
-		return true
+	if !spExists { // This should never happen!
+		pi.Log.Warnf("%s ........... Periodical missing session!", p.name)
+		return false
 	}
 
 	now := time.Now()
-	//reqTime, okReqTime := ctx.Value(ctxKey("ReqTime")).(time.Time)
-	//if !okReqTime {
-	//	reqTime = now
-	//}
 	pp := &sp.Process
 	fmt.Printf("sp.ReqTime %v now %v\n", sp.ReqTime, now)
 	pp.Profile(sp.ReqTime, sp.ReqTime, now)
@@ -410,24 +422,32 @@ func (p *plug) periodical(ctx context.Context) bool {
 	var decission string
 	if ctrl.Auto {
 		var description bytes.Buffer
+		var result string
 		for i, leanred := range p.wsGate.Learned {
-			decission = leanred.Process.Decide(pp)
+			if !leanred.Active {
+				continue
+			}
+			result = leanred.Process.Decide(pp)
 			if decission == "" {
 				break
 			}
-			description.WriteString(fmt.Sprintf("  Learned[%d]: %s", i, decission))
+			description.WriteString(fmt.Sprintf("  Learned[%d]: %s", i, result))
 		}
-		if decission != "" {
+		if result != "" {
 			// include all decissions!
 			decission = description.String()
 		}
 	} else {
-		decission = p.wsGate.Configured.Process.Decide(pp)
+		if (p.wsGate.Configured != nil) && p.wsGate.Configured.Active {
+			decission = p.wsGate.Configured.Process.Decide(pp)
+		}
 	}
-	if decission != "" {
-		pi.Log.Infof("Alert during periodical: %s", decission)
-		p.stats("PeriodicalNok")
-		return true
+	if ctrl.Alert {
+		if decission != "" {
+			pi.Log.Infof("Alert during periodical: %s", decission)
+			p.stats("PeriodicalNok")
+			return true
+		}
 	}
 	p.stats("PeriodicalOk")
 	return false
@@ -502,8 +522,10 @@ func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 				if !sp.Alert {
 					pi.Log.Infof("Done - No Alert! %v", newCtx.Err())
 					p.stats("AlertOff")
-					p.pile.Pile(p.ongoing[index])
-					p.reportAllow()
+					if p.wsGate.Control.Learn {
+						p.pile.Pile(p.ongoing[index])
+						p.reportAllow()
+					}
 				} else {
 					pi.Log.Infof("Done - With Alert! %v", newCtx.Err())
 					p.stats("AlertOn")
@@ -781,9 +803,9 @@ func (p *plug) fetchConfig() {
 		// 		gurdianSpec.falseAllow=false
 		// 		gurdianSpec.ConsultGuard.Active = false
 	}
-	if gurdianSpec.Configured == nil {
-		gurdianSpec.Configured = new(spec.Critiria)
-	}
+	//if gurdianSpec.Configured == nil {
+	//	gurdianSpec.Configured = new(spec.Critiria)
+	//}
 	//if gurdianSpec.Learned == nil {
 	//	gurdianSpec.Learned = make([]spec.Critiria, 0)
 	//}

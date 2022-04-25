@@ -18,8 +18,8 @@ function Req(props) {
   if (!data.qs) data.qs = {}
   if (!data.headers) data.headers = {}
   if (!data.contentlength) data.contentlength = []  
-  if (!data.method) data.method = {}
-  if (!data.proto) data.proto = {}
+  if (!data.method) data.method = []
+  if (!data.proto) data.proto = []
   if (!data.cip) data.cip = []
 
   useEffect(() => {
@@ -61,7 +61,7 @@ function Req(props) {
   var methods = ["GET", "POST", "PUT", "HEAD", "PATCH", "DELETE", "CONNECT", "OPTIONS", "TRACE" ]
   var protocols = ["HTTP/1.0", "HTTP/1.1",  "HTTP/2"]
 
-  console.log("data.method", data.metho)
+  console.log("data.method", data.method)
 return (
     <TreeItem nodeId={nodeId} label={name} sx={{ textAlign: "start"}}>
         <Selection data={data.method} nodeId={nodeId+">Method"} name="Method" selection={methods} onDataChange={handleMethodChange}></Selection>

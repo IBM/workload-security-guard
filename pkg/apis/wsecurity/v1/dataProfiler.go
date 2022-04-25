@@ -244,6 +244,24 @@ func (config *SimpleValConfig) Learn(p *SimpleValPile) {
 	config.UnicodeFlags = p.UnicodeFlags
 }
 
+func (config *SimpleValConfig) Merge(m *SimpleValConfig) {
+	config.Digits.Merge(m.Digits)
+	config.Spaces.Merge(m.Spaces)
+	config.Unicodes.Merge(m.Unicodes)
+	config.NonReadables.Merge(m.NonReadables)
+	config.Letters.Merge(m.Letters)
+	config.SpecialChars.Merge(m.SpecialChars)
+	config.Sequences.Merge(m.Sequences)
+	config.Flags ^= m.Flags
+	for i, v := range m.UnicodeFlags {
+		if i < len(config.UnicodeFlags) {
+			config.UnicodeFlags[i] ^= v
+		} else {
+			config.UnicodeFlags = append(config.UnicodeFlags, v)
+		}
+	}
+}
+
 func (config *SimpleValConfig) Normalize() {
 	config.Digits = append(config.Digits, U8Minmax{0, 0})
 	config.Spaces = append(config.Spaces, U8Minmax{0, 0})

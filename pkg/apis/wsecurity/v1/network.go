@@ -234,6 +234,30 @@ func (in CidrSet) DeepCopyInto(out *CidrSet) {
 	(*out) = cpy
 }
 
+func (cidrs *CidrSet) Merge(m CidrSet) {
+	var found bool
+	for _, v := range m {
+		found = false
+		for _, cidr := range *cidrs {
+			ip := v.IP
+			if !cidr.Contains(ip) {
+				continue
+			}
+			for i, b := range v.Mask {
+				ip[i] |= ^b
+			}
+			if !cidr.Contains(ip) {
+				continue
+			}
+			found = true
+			break
+		}
+		if !found {
+			*cidrs = append(*cidrs, v)
+		}
+	}
+}
+
 func (cidrs CidrSet) Strings() (s []string) {
 	s = make([]string, len(cidrs))
 	for i, cidr := range cidrs {

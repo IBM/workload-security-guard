@@ -123,6 +123,17 @@ func (config *KeyValConfig) Learn(p *KeyValPile) {
 	}
 }
 
+func (config *KeyValConfig) Merge(m *KeyValConfig) {
+	for mk, mv := range m.Vals {
+		v, exists := config.Vals[mk]
+		if exists {
+			v.Merge(mv)
+		} else {
+			config.Vals[mk] = mv
+		}
+	}
+}
+
 func (config *KeyValConfig) Normalize() {
 	//config.MinimalSet = make(map[string]void)
 	//config.MinimalSet = make(map[string]struct{})

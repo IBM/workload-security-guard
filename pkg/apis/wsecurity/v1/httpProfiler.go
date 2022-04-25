@@ -173,6 +173,11 @@ func (config *UrlConfig) Learn(p *UrlPile) {
 	config.Val.Learn(p.Val)
 }
 
+func (config *UrlConfig) Merge(m *UrlConfig) {
+	config.Segments.Merge(m.Segments)
+	config.Val.Merge(&m.Val)
+}
+
 func (config *UrlConfig) Decide(u *UrlProfile) string {
 	if str := config.Segments.Decide(u.Segments); str != "" {
 		return fmt.Sprintf("Segmengs: %s", str)
@@ -246,6 +251,10 @@ func (config *QueryConfig) Normalize() {
 
 func (config *QueryConfig) Learn(p *QueryPile) {
 	config.Kv.Learn(p.Kv)
+}
+
+func (config *QueryConfig) Merge(m *QueryConfig) {
+	config.Kv.Merge(&m.Kv)
 }
 
 func (q *QueryProfile) Marshal(depth int) string {
@@ -340,6 +349,10 @@ func (config *HeadersConfig) Normalize() {
 
 func (config *HeadersConfig) Learn(p *HeadersPile) {
 	config.Kv.Learn(p.Kv)
+}
+
+func (config *HeadersConfig) Merge(m *HeadersConfig) {
+	config.Kv.Merge(&m.Kv)
 }
 
 func (config *HeadersConfig) Decide(h *HeadersProfile) string {
@@ -556,8 +569,27 @@ func (config *ReqConfig) Learn(p *ReqPile) {
 	config.HopIp = config.hopIp.Strings()
 }
 
+func (config *ReqConfig) Merge(mc *ReqConfig) {
+	config.clientIp.Merge(mc.clientIp)
+	config.hopIp.Merge(mc.hopIp)
+	config.method.Append(&mc.method)
+	config.proto.Append(&mc.proto)
+	config.ContentLength.Merge(mc.ContentLength)
+	config.Headers.Merge(&mc.Headers)
+	config.Qs.Merge(&mc.Qs)
+	config.Url.Merge(&mc.Url)
+	config.Method = config.method.List
+	config.Proto = config.proto.List
+	config.ClientIp = config.clientIp.Strings()
+	config.HopIp = config.hopIp.Strings()
+}
+
 func (config *RespConfig) Learn(p *RespPile) {
 	config.Headers.Learn(&p.Headers)
+}
+
+func (config *RespConfig) Merge(mc *RespConfig) {
+	config.Headers.Merge(&mc.Headers)
 }
 
 func (config *ReqConfig) Normalize() {

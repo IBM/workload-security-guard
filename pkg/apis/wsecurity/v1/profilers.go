@@ -178,6 +178,48 @@ func (mms *U8MinmaxSlice) Learn(list []uint8) {
 	*mms = append(*mms, U8Minmax{min, max})
 }
 
+func (mms *U8Minmax) Merge(m *U8Minmax) {
+	if mms.Min > m.Min {
+		mms.Min = m.Min
+	}
+	if mms.Max < m.Max {
+		mms.Max = m.Max
+	}
+}
+
+func (mms *U8MinmaxSlice) Merge(m U8MinmaxSlice) {
+	//(*mms)[0].Merge(&(m[0]))
+
+	var found bool
+	for _, v := range m {
+		for _, mm := range *mms {
+			if mm.Min < v.Min {
+				if mm.Max > v.Max {
+					found = true
+					break
+				}
+				// mm.Max < v.Max
+				if mm.Max >= v.Min {
+					mm.Merge(&v)
+					found = true
+					break
+				}
+				// mm.Max < v.Min
+			}
+			// mm.Min > v.Min
+			if mm.Min > v.Max {
+				continue
+			}
+			mm.Merge(&v)
+			found = true
+			break
+		}
+		if !found {
+			*mms = append(*mms, v)
+		}
+	}
+}
+
 func (mms U8MinmaxSlice) Describe() string {
 	if len(mms) == 0 {
 		return "No Limit"
