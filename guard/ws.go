@@ -291,7 +291,7 @@ func getCrd(ns string, sid string) *spec.WsGate {
 	fmt.Printf("getCrd guardian %s %s\n", ns, sid)
 
 	g, err = gClient.Guardians(ns).Get(context.TODO(), sid, metav1.GetOptions{})
-	if err == nil {
+	if err != nil {
 		fmt.Printf("getCrd err %v\n", err)
 		return nil
 	}
@@ -410,41 +410,53 @@ func setConfigMap() {
 func fetchConfig(w http.ResponseWriter, req *http.Request) {
 	query := req.URL.Query()
 	sidSlice := query["sid"]
+	nsSlice := query["ns"]
 	fmt.Printf("Servicing fetchConfig %v\n", query)
-	if len(sidSlice) != 1 {
-		fmt.Printf("Servicing fetchConfig missing data %d\n", len(sidSlice))
+	if len(sidSlice) != 1 || len(nsSlice) != 1 {
+		fmt.Printf("Servicing fetchConfig missing data sid %d ns %d\n", len(sidSlice), len(nsSlice))
 		return
 	}
 	sid := sidSlice[0]
-	if sid == "" {
+	ns := nsSlice[0]
+	if sid == "" || ns == "" {
 		fmt.Printf("Servicing fetchConfig missing data\n")
+		http.Error(w, "Missing data", http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("Servicing fetchConfig of service id %s\n", sid)
-	data := new(spec.WsGate)
-	data.Control.Consult = true
-	data.Control.RequestsPerMinuete = 60
-	data.Control.Block = false
-	data.Configured = new(spec.Critiria)
-	data.Configured.Req.AddTypicalVal()
-	//data.Req.Url.Val.AddValExample("/")
-	//fmt.Println("Url ", data.Req.Url.Val.Describe())
-	//data.Req.Qs.Kv.WhitelistKnownKeys(map[string]string{"a": "4", "b": ""})
-	//data.Req.Qs.Kv.WhitelistKnownKeys(map[string]string{"b": "abcdefg123 *?"})
-	//data.Req.Qs.Kv.WhitelistByExample("aa", "+972-54-5445-321")
-	//data.Req.Qs.Kv.WhitelistByExample("aaa", "123456")
-	//data.Req.Qs.Kv.SetMandatoryKeys([]string{"a"})
-	//fmt.Println("Qs ", data.Req.Qs.Kv.Describe())
-	buf, err := json.Marshal(data)
+
+	fmt.Printf("Servicing fetchConfig of service id %s ns %s\n", sid, ns)
+	record := loadSession(ns, sid)
+	buf, err := json.Marshal(record.wsgate)
 	if err != nil {
 		fmt.Printf("Servicing fetchConfig error while Marshal %v\n", err)
 	}
 	w.Write(buf)
+	/*
+		data := new(spec.WsGate)
+		data.Control.Consult = true
+		data.Control.RequestsPerMinuete = 60
+		data.Control.Block = false
+		data.Configured = new(spec.Critiria)
+		data.Configured.Req.AddTypicalVal()
+		//data.Req.Url.Val.AddValExample("/")
+		//fmt.Println("Url ", data.Req.Url.Val.Describe())
+		//data.Req.Qs.Kv.WhitelistKnownKeys(map[string]string{"a": "4", "b": ""})
+		//data.Req.Qs.Kv.WhitelistKnownKeys(map[string]string{"b": "abcdefg123 *?"})
+		//data.Req.Qs.Kv.WhitelistByExample("aa", "+972-54-5445-321")
+		//data.Req.Qs.Kv.WhitelistByExample("aaa", "123456")
+		//data.Req.Qs.Kv.SetMandatoryKeys([]string{"a"})
+		//fmt.Println("Qs ", data.Req.Qs.Kv.Describe())
+		buf, err := json.Marshal(data)
+		if err != nil {
+			fmt.Printf("Servicing fetchConfig error while Marshal %v\n", err)
+		}
+		w.Write(buf)
+	*/
 }
 
 func main() {
 	getGuardianClient()
-	watchCrd()
+	go watchCrd()
 	//setConfigMap()
 	data := new(spec.WsGate)
 	data.Control.Consult = true

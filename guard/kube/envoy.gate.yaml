@@ -1,0 +1,44 @@
+apiVersion: ibmresearch.com/v1
+kind: Gates
+metadata:
+  name: envoy.gate
+  namespace: knative-guardian
+spec:
+  collectorId: envoy.gate
+  roundedMarkers:
+    - dayofweek
+    - timeofday
+  minimumLearning: 1000
+  fingerprints:
+    - method
+    - scheme
+    - path
+    - queryKeys
+    - transfer-encoding
+    - content-encoding
+    - keep-alive
+    - connection
+    - x-forwarded-for
+    - cache-control
+    - via
+    - acceptHeaders
+    - contentHeaders
+    - userAgent
+    - headerKeys
+    - protocol
+  histograms:
+    - body
+    - otherHeaders
+    - queryContent
+    - cookies
+    - allHeaders
+  AllowLimit: 10
+  integers:
+    - contentLength
+    - otherHeaders
+    - queryContent
+    - cookies
+    - pathLength
+    - allHeaders
+  LearnLimit: 3
+  markers: []
