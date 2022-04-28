@@ -36,7 +36,7 @@ func processPile(w http.ResponseWriter, req *http.Request) {
 	query := req.URL.Query()
 	sidSlice := query["sid"]
 	nsSlice := query["ns"]
-	//fmt.Printf("Servicing processPile %v\n", query)
+	fmt.Printf("Servicing processPile %v\n", query)
 	if len(sidSlice) != 1 || len(nsSlice) != 1 {
 		fmt.Printf("Servicing processPile missing data sid %d ns %d\n", len(sidSlice), len(nsSlice))
 		return
@@ -214,8 +214,9 @@ func loadSession(ns string, sid string) *serviceRecord {
 }
 
 func watchCrd() {
+	ns := "default"
 	for {
-		watchCrdOnce()
+		watchCrdOnce(ns)
 		sleep("100s")
 	}
 }
@@ -229,15 +230,15 @@ func sleep(timeoutStr string) {
 	time.Sleep(timeout)
 }
 
-func watchCrdOnce() {
+func watchCrdOnce(ns string) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			fmt.Printf("Recovered from panic during watchCrdOnce! Recover: %v\n", recovered)
 		}
 	}()
-	watcher, err := gClient.Guardians("").Watch(context.TODO(), metav1.ListOptions{})
+	watcher, err := gClient.Guardians(ns).Watch(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		fmt.Printf("watchCrd err %v\n", err)
+		fmt.Printf("watchCrd gClient.Guardians(%s).Watch err %v\n", ns, err)
 		return
 	}
 	ch := watcher.ResultChan()

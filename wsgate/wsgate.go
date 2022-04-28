@@ -850,8 +850,9 @@ func (p *plug) Init() {
 
 	p.guardUrl = os.Getenv("WSGATE_GUARD_URL")
 	if p.guardUrl == "" {
-		p.guardUrl = "http://ws.knative-guard"
+		p.guardUrl = "http://ws.knative-guard:8888"
 	}
+	pi.Log.Infof("guardUrl %s", p.guardUrl)
 
 	servingNamespace := os.Getenv("SERVING_NAMESPACE")
 	if servingNamespace == "" {
