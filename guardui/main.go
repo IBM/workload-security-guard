@@ -39,12 +39,12 @@ func (gui *guardianui) setCrd(namespace string, serviceId string, guardianSpec *
 	var g *spec.Guardian
 	var err error
 
-	fmt.Print("setCrd\n")
+	fmt.Printf("setCrd %v\n", guardianSpec.Control)
 
 	fmt.Print((*spec.WsGate)(guardianSpec).Marshal(0))
 	g, err = gui.gClient.Guardians(namespace).Get(context.TODO(), serviceId, metav1.GetOptions{})
 	if err == nil {
-		fmt.Printf("setCrd: guardian read succesful %v\n", g)
+		fmt.Printf("setCrd: guardian read succesful %v\n", g.Spec.Control)
 		g.Name = serviceId
 		g.Spec = guardianSpec
 		_, err = gui.gClient.Guardians(namespace).Update(context.TODO(), g, metav1.UpdateOptions{})
@@ -52,7 +52,7 @@ func (gui *guardianui) setCrd(namespace string, serviceId string, guardianSpec *
 			fmt.Printf("setCrd: update err %v\n", err)
 			return false
 		}
-		fmt.Printf("setCrd: guardian update succesfull %v\n", g)
+		fmt.Printf("setCrd: guardian update succesfull %v\n", g.Spec.Control)
 	} else {
 		fmt.Printf("setCrd: guardian read err %v\n", err)
 		g.Name = serviceId
@@ -123,22 +123,23 @@ func setGuadian(w http.ResponseWriter, r *http.Request) {
 	}
 	str := string(b)
 	fmt.Printf("Received: %s\n", str)
-
 	var g spec.GuardianSpec
-	if g.Configured == nil {
-		g.Configured = new(spec.Critiria)
-	}
-	g.Configured.Normalize()
+
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	err := json.Unmarshal([]byte(str), &g)
-
-	//Serr := json.NewDecoder(r.Body).Decode(&g)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	/*
+		if g.Configured == nil {
+			g.Configured = new(spec.Critiria)
+		}
+		g.Configured.Normalize()
+	*/
+	//Serr := json.NewDecoder(r.Body).Decode(&g)
 	success := gui.setCrd(namespace, service, &g)
 	// Do something with the Person struct...
 	fmt.Printf("setGuadian: %v\n", success)

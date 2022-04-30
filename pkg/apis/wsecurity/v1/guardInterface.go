@@ -17,7 +17,7 @@ import (
 //          <Allow>		// used for example when ReqConfig is not ready
 // <Block>
 type Ctrl struct { // If guard needs to be consulted but is unavaliable => block
-	Alert              bool   `json:"ignore"`  // If true, use critiria to identify alerts
+	Alert              bool   `json:"alert"`   // If true, use critiria to identify alerts
 	Block              bool   `json:"block"`   // If true, block on alert.
 	Learn              bool   `json:"learn"`   // If true, and no alert idetified, report piles
 	Auto               bool   `json:"auto"`    // If true, use learned critiria rather than configured critiria
