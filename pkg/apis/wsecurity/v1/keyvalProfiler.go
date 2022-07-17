@@ -53,12 +53,15 @@ func (p *KeyValPile) Append(a *KeyValPile) {
 // Profile a generic map of key vals where we expect:
 // keys belonging to some contstant list of keys
 // vals have some defined charactaristics
-func (kvp *KeyValProfile) Profile(m map[string][]string) {
+func (kvp *KeyValProfile) Profile(m map[string][]string, exceptions map[string]bool) {
 	if len(m) == 0 { // no keys
 		return
 	}
 	kvp.Vals = make(map[string]*SimpleValProfile, len(m))
 	for k, v := range m {
+		if exceptions[k] {
+			continue
+		}
 		//var keyConfig *SimpleValConfig
 		//if config.Vals != nil {
 		//	keyConfig = config.Vals[k]

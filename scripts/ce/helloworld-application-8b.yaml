@@ -1,0 +1,70 @@
+apiVersion: serving.knative.dev/v1
+kind: Configuration
+metadata:
+  annotations:
+    serving.knative.dev/creator: system:serviceaccount:p8rrxs4rezl:p8rrxs4rezl-writer
+    serving.knative.dev/lastModifier: system:serviceaccount:p8rrxs4rezl:p8rrxs4rezl-writer
+    serving.knative.dev/routes: helloworld-application-8b
+  generation: 1
+  labels:
+    codeengine.cloud.ibm.com/visibility: public
+    serving.knative.dev/service: helloworld-application-8b
+    serving.knative.dev/serviceUID: 54e9aa23-86cd-4ece-ad4d-8665b9e26838
+  name: helloworld-application-8b
+  namespace: p8rrxs4rezl
+  ownerReferences:
+  - apiVersion: serving.knative.dev/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Service
+    name: helloworld-application-8b
+    uid: 54e9aa23-86cd-4ece-ad4d-8665b9e26838
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: "10"
+        autoscaling.knative.dev/minScale: "0"
+      creationTimestamp: null
+    spec:
+      containerConcurrency: 100
+      imagePullSecrets:
+      - name: ce-auto-icr-private-us-south
+      containers:
+      - name: protector
+        image: private.us.icr.io/dev_sec_ops/protector@sha256:eeac0b16875353fd5bf981fc6299ad8a0fdc383c0a0cce4d956b5e6bd91de880
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 22000
+        env:
+          - name: SERVICEURL
+            value: http://127.0.0.1:8080
+          - name: SERVICENAME
+            value: helloworld
+          - name: NAMESPACE
+            value: p8rrxs4rezl
+          - name: RTPLUGS
+            value: wsgate
+          - name: CMNAME
+            value: guardian.helloworld
+      - env:
+        - name: CE_SUBDOMAIN
+          value: p8rrxs4rezl
+        - name: CE_APP
+          value: helloworld-application-8b
+        - name: CE_DOMAIN
+          value: us-south.codeengine.appdomain.cloud
+        image: icr.io/codeengine/helloworld
+        imagePullPolicy: Always
+        name: user-container
+        resources:
+          limits:
+            cpu: "1"
+            ephemeral-storage: 400M
+            memory: 4G
+          requests:
+            cpu: "1"
+            ephemeral-storage: 400M
+            memory: 4G
+      enableServiceLinks: false
+      timeoutSeconds: 300

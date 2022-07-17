@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ws
+  namespace: knative-guard
+  labels:
+    app: ws
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ws
+  template:
+    metadata:
+      labels:
+        app: ws
+    spec:
+      serviceAccountName: guardian
+      imagePullSecrets:
+      - name: all-icr-io
+      containers:
+      - name: ws
+        image: ko://github.com/IBM/workload-security-guard/guard
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8888

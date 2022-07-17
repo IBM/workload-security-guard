@@ -15,11 +15,13 @@ type Iofilter struct {
 	outBuf     []byte
 	bufChan    chan []byte
 	bufs       [][]byte
-	inBubIndex uint
+	inBufIndex uint
 	numBufs    uint
 	sizeBuf    uint
 	src        io.ReadCloser
-	filter     func(buf []byte) error
+	filter     func(buf []byte, state interface{})
+	state      interface{}
+	done       chan bool
 }
 
 // Create a New iofilter to wrap an existing provider of an io.ReadCloser interface
@@ -30,9 +32,9 @@ type Iofilter struct {
 // 2. The size of the buffers (default is 8192)
 // A goroutine will be initiatd to wait on the original provider Read interface
 // and deliver the data to the Readwer using an internal channel
-func New(src io.ReadCloser, filter func(buf []byte) error, params ...uint) (iof *Iofilter) {
+func New(src io.ReadCloser, filter func(buf []byte, state interface{}), state interface{}, params ...uint) (iof *Iofilter) {
 	var numBufs, sizeBuf uint
-	fmt.Printf("params: %v\n", params)
+	//fmt.Printf("params: %v\n", params)
 	switch len(params) {
 	case 0:
 		numBufs = 3
@@ -60,6 +62,8 @@ func New(src io.ReadCloser, filter func(buf []byte) error, params ...uint) (iof 
 	iof.numBufs = numBufs
 	iof.sizeBuf = sizeBuf
 	iof.filter = filter
+	iof.state = state
+	iof.done = make(chan bool)
 	iof.src = src
 
 	// create s.numBufs buffers
@@ -74,40 +78,22 @@ func New(src io.ReadCloser, filter func(buf []byte) error, params ...uint) (iof 
 
 	// start serving the io
 	go func() {
-		defer func() {
-			if recovered := recover(); recovered != nil {
-				fmt.Printf("(iof *iofilter) Gorutine recovering from panic... %v\n", recovered)
-			}
-
-			// We close the internal channel to signal to Read() that we are done
-			close(iof.bufChan)
-
-			// Should we also close the source?
-			// Did the source not reported an error?
-			// Are we expected now to close it?
-			// Seems just wrong.
-			// iof.closeSrc()
-		}()
-
 		var n int
 		var err error
-		for {
+		for err == nil {
 			//fmt.Printf("(iof *iofilter) Gorutine Reading...\n")
-			n, err = iof.src.Read(iof.inBuf)
-			if n > 0 {
+			n, err = iof.readFromSrc()
+			if n > 0 { // we have data
 				//fmt.Printf("(iof *iofilter) Gorutine read %d bytes\n", n)
-				err = iof.filter(iof.inBuf[:n])
-				if err != nil {
-					//fmt.Printf("(iof *iofilter) Gorutine filter blocked: %v\n", err)
-					return
-				}
+				iof.filterData(iof.inBuf[:n])
+
 				iof.bufChan <- iof.inBuf[:n]
 				// ok, we now have a maximum of s.numBufs-2 in s.bufChan + one buffer s.outBuf
 				// this means we have one free buffer to give to s.inBuf
-				iof.inBubIndex = (iof.inBubIndex + 1) % iof.numBufs
-				iof.inBuf = iof.bufs[iof.inBubIndex]
-			} else {
-				if err == nil {
+				iof.inBufIndex = (iof.inBufIndex + 1) % iof.numBufs
+				iof.inBuf = iof.bufs[iof.inBufIndex]
+			} else { // no data
+				if err == nil { // no data and no err.... bad, bad writter!!
 					fmt.Printf("(iof *iofilter) Gorutine read no bytes, err is nil!\n")
 					// hey, this io.Read interface is not doing as recommended!
 					// "Implementations of Read are discouraged from returning a zero byte count with a nil error"
@@ -116,13 +102,16 @@ func New(src io.ReadCloser, filter func(buf []byte) error, params ...uint) (iof 
 					time.Sleep(100 * time.Millisecond)
 				}
 			}
-			if err != nil {
-				if err.Error() != "EOF" {
-					fmt.Printf("(iof *iofilter) Gorutine err %v\n", err)
-				}
-				return
-			}
 		}
+		if err.Error() != "EOF" {
+			fmt.Printf("(iof *iofilter) Gorutine err %v\n", err)
+		} else {
+			//fmt.Printf("(iof *iofilter) reached EOF in reader!\n")
+		}
+
+		iof.closeChannel()
+
+		close(iof.done)
 	}()
 
 	return
@@ -136,7 +125,7 @@ func (iof *Iofilter) Read(dest []byte) (n int, err error) {
 	// Do we have bytes in our current buffer?
 	if len(iof.outBuf) == 0 {
 		// Block until data arrives
-		if iof.outBuf, opened = <-iof.bufChan; !opened {
+		if iof.outBuf, opened = <-iof.bufChan; !opened && iof.outBuf == nil {
 			err = io.EOF
 			n = 0
 			//fmt.Printf("(iof *iofilter) Read Ended with io.EOF\n")
@@ -152,11 +141,14 @@ func (iof *Iofilter) Read(dest []byte) (n int, err error) {
 
 // The io.Close interface of the iofilter
 func (iof *Iofilter) Close() error {
+	// We ignore close from any of the readers - we close when the source closes
+
 	//fmt.Printf("(iof *iofilter) Close\n")
-	iof.closeSrc()
+	//iof.closeSrc()
 	return nil
 }
 
+/*
 func (iof *Iofilter) closeSrc() error {
 	// There seem to be no standart convension about closing
 	// Some may require it..
@@ -169,4 +161,46 @@ func (iof *Iofilter) closeSrc() error {
 	}()
 	iof.src.Close()
 	return nil
+}
+*/
+
+func (iof *Iofilter) WaitTillDone() {
+	<-iof.done
+}
+
+func (iof *Iofilter) readFromSrc() (n int, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			fmt.Printf("(iof *iofilter) readFromSrc recovering from panic... %v\n", recovered)
+
+			// We close the internal channel to signal from the src to readers that we are done
+			close(iof.bufChan)
+
+			n = 0
+			err = io.EOF
+		}
+	}()
+	fmt.Printf("(iof *Iofilter) Gorutine readFromSrc Reading...\n")
+	n, err = iof.src.Read(iof.inBuf)
+	fmt.Printf("(iof *Iofilter) Gorutine readFromSrc returning %d err %v\n", n, err)
+	return n, err
+}
+
+func (iof *Iofilter) filterData(buf []byte) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			fmt.Printf("(iof *iofilter) filterData recovering from panic... %v\n", recovered)
+		}
+	}()
+	iof.filter(buf, iof.state)
+}
+
+func (iof *Iofilter) closeChannel() {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			fmt.Printf("(iof *Iofilter) closeChannel recovering from panic... %v\n", recovered)
+		}
+	}()
+	//fmt.Printf("(iof *Iofilter) closeChannel ! \n")
+	close(iof.bufChan)
 }

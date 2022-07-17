@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: community-ingress-resource
+  annotations:
+    kubernetes.io/ingress.class: "public-iks-k8s-nginx"
+spec:
+  rules:
+  - host:  protected-app.kn1-e621c7d733ece1fad737ff54a8912822-0000.us-south.containers.appdomain.cloud
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: protected-app
+            port:
+              number: 80
+

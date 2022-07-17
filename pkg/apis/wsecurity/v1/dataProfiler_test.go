@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -12,7 +13,7 @@ Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem
 Why do we use it?
 `
 
-var flags1 uint32 = uint32(0b100000000010000010100010000001)
+var flags1 uint32 = uint32(0b1000001010001000000)
 
 func TestDescriptionSimpleVals(t *testing.T) {
 	t.Run("LoremIpsum", func(t *testing.T) {
@@ -84,193 +85,76 @@ func TestConfigSimpleVals(t *testing.T) {
 
 func TestProfileSimpleVals(t *testing.T) {
 	var svp *SimpleValProfile
+	var svc *SimpleValConfig
+
+	unicode := []uint32{}
+
 	//svc := new(SimpleValConfig)
 	t.Run("LoremIpsum", func(t *testing.T) {
 		//fmt.Printf("tt.args.str %s", tt.args.str)
 		start := time.Now()
 
-		for i := 0; i < 1; i++ {
-			svp = new(SimpleValProfile)
-			svp.Profile(str1)
+		svp = new(SimpleValProfile)
+		svc = new(SimpleValConfig)
+		svPile := new(SimpleValPile)
+
+		svp.Profile(str1)
+		Confirm(t, svp, 255, 8, 11, 97, 4, flags1, 0, unicode)
+
+		svPile.Add(svp)
+		svPile.Marshal(0)
+		svPile.Append(svPile)
+		if ret := svc.Decide(svp); ret == "" {
+			t.Errorf("ProfileSimpleVal() Decided ok but expected a reject")
 		}
+
+		svc.AddValExample(str1)
+		if ret := svc.Decide(svp); ret != "" {
+			t.Errorf("ProfileSimpleVal() Decided based on example returned %s", ret)
+		}
+
+		svp.Describe()
+		svp.Marshal(0)
+		svc.Marshal(0)
+		svc.Merge(svc)
+		if ret := svc.Decide(svp); ret != "" {
+			t.Errorf("ProfileSimpleVal() Decided based on example returned %s", ret)
+		}
+
 		elapsed := time.Since(start)
 		fmt.Printf("Time is %s", elapsed)
-		//t.Errorf("svp %v", svp)
-		if svp.Flags != flags1 {
-			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags1)
+		svc.Normalize()
+		if ret := svc.Decide(svp); ret != "" {
+			t.Errorf("ProfileSimpleVal() Decided based on example returned %s", ret)
 		}
-		if svp.Spaces != 97 {
-			t.Errorf("ProfileSimpleVal() Spaces = %v, want %v", svp.Spaces, 97)
+		svc.Learn(svPile)
+		if ret := svc.Decide(svp); ret != "" {
+			t.Errorf("ProfileSimpleVal() Decided based on example returned %s", ret)
 		}
-		if svp.NonReadables != 4 {
-			t.Errorf("ProfileSimpleVal() NonReadables = %v, want %v", svp.NonReadables, 4)
+
+		svc = NewSimpleValConfig(0, 0, 0, 32, 32, 0, 16)
+		if ret := svc.Decide(svp); ret == "" {
+			t.Errorf("ProfileSimpleVal() Decided ok but expected a reject")
 		}
-		if svp.Unicodes != 0 {
-			t.Errorf("ProfileSimpleVal() Unicodes = %v, want %v", svp.Unicodes, 0)
-		}
-		if svp.Letters != 255 {
-			t.Errorf("ProfileSimpleVal() Letters = %v, want %v", svp.Letters, 255)
-		}
-		if svp.Digits != 8 {
-			t.Errorf("ProfileSimpleVal() Digits = %v, want %v", svp.Digits, 8)
-		}
-		if svp.SpecialChars != 11 {
-			t.Errorf("ProfileSimpleVal() SpecialChars = %v, want %v", svp.SpecialChars, 11)
-		}
-		if svp.Sequences != 214 {
-			t.Errorf("ProfileSimpleVal() Sequences = %v, want %v", svp.Sequences, 214)
-		}
-		//if svp.Words != 255 {
-		//	t.Errorf("ProfileSimpleVal() Words = %v, want %v", svp.Words, 101)
-		//}
-		//if svp.Numbers != 255 {
-		//	t.Errorf("ProfileSimpleVal() Numbers = %v, want %v", svp.Numbers, 2)
-		//}
 	})
-	for c := 0; c < 257; c++ {
-		r := rune(c)
-		str := string(r)
-		name := fmt.Sprintf("testString %s", str)
-		t.Run(name, func(t *testing.T) {
-			digitCounter := 0
-			letterCounter := 0
-			specialCharCounter := 0
 
-			svp := new(SimpleValProfile)
-			svp.Profile(string(r))
-			var flags uint32
-			// Slots and counters for AsciiDaya:
-			// 0-31 (32) nonReadableRCharCounter
-			// 32-47 (16) slots 0-15 respectivly
-			// 48-57 (10) digitCounter
-			// 58-64 (6) slots 16-22
-			// 65-90 (26) smallLetterCounter
-			// 91-96 (6) slots 23-28
-			// 97-122 (26) capitalLetterCounter
-			// 123-126 (4) slots 29-32
-			// 127 (1) nonReadableRCharCounter
-			// Slots:
-			// <SPACE> ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~
-			//    0    1 2 3 4 5 6 7 8 8 9 0 1 2 3 4 5 6 7 8 7 9 0 1 2 1 3 4 5 6 7 6 9 0 1 2
-			var notSpecial bool
-
-			if c < 32 { //0-31
-				flags |= 1 << NonReadableCharSlot
-			} else {
-				switch c {
-				case 32: // SPACE
-					flags |= 1
-				case 33: // !
-					flags |= 1 << 1
-				case 34: // "
-					flags |= 1 << 2
-				case 35: // #
-					flags |= 1 << 3
-				case 36: // $
-					flags |= 1 << 4
-				case 37: // %
-					flags |= 1 << 5
-				case 38: // &
-					flags |= 1 << 6
-				case 39: // '
-					flags |= 1 << 7
-				case 40: // (
-					flags |= 1 << 8
-				case 41: // )
-					flags |= 1 << 8
-				case 42: // *
-					flags |= 1 << 9
-				case 43: // +
-					flags |= 1 << 10
-				case 44: // ,
-					flags |= 1 << 11
-				case 45: // -
-					flags |= 1 << 12
-				case 46: // .
-					flags |= 1 << 13
-				case 47: // /
-					flags |= 1 << 14
-				case 58: // :
-					flags |= 1 << 15
-				case 59: // ;
-					flags |= 1 << 16
-				case 60: // <
-					flags |= 1 << 17
-				case 61: // =
-					flags |= 1 << 18
-				case 62: // >
-					flags |= 1 << 17
-				case 63: // ?
-					flags |= 1 << 19
-				case 64: // @
-					flags |= 1 << 20
-				case 91: // [
-					flags |= 1 << 22
-				case 92: // \
-					flags |= 1 << 21
-				case 93: // ]
-					flags |= 1 << 22
-				case 94: // ^
-					flags |= 1 << 23
-				case 95: // _
-					flags |= 1 << 24
-				case 96: // `
-					flags |= 1 << 25
-				case 122: // {
-					flags |= 1 << 27
-				case 124: // |
-					flags |= 1 << 26
-				case 125: // }
-					flags |= 1 << 27
-				case 126: // ~
-					flags |= 1 << 28
-				default:
-					notSpecial = true
-				}
-			}
-			if !notSpecial {
-				specialCharCounter++
-			}
-			if svp.Flags != flags {
-				t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
-			}
-			if svp.Spaces != 0 {
-				t.Errorf("ProfileSimpleVal() Spaces = %d instead of 0", svp.Spaces)
-			}
-			if svp.Letters != uint8(letterCounter) {
-				t.Errorf("ProfileSimpleVal() Letters = %d instead of %d", svp.Letters, letterCounter)
-			}
-			if svp.Digits != uint8(digitCounter) {
-				t.Errorf("ProfileSimpleVal() Digits = %d instead of %d", svp.Digits, digitCounter)
-			}
-			if svp.SpecialChars != uint8(specialCharCounter) {
-				t.Errorf("ProfileSimpleVal() %d SpecialChars = %d instead of %d %v", c, svp.SpecialChars, specialCharCounter, svp)
-			}
-		})
-	}
 	var flags uint32
 	var str, name string
 	flags = 0x1<<CommentsSlot | 0x1<<SlashSlot | 0x1<<AsteriskSlot
 	str = "/*"
 	name = fmt.Sprintf("testString %s", str)
 	t.Run(name, func(t *testing.T) {
-		var svp SimpleValProfile
-		//svc := new(SimpleValConfig)
-
+		svp = new(SimpleValProfile)
 		svp.Profile(str)
-		if svp.Flags != flags {
-			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
-		}
+		Confirm(t, svp, 0, 0, 2, 0, 0, flags, 0, unicode)
 	})
 	flags = 0x1<<CommentsSlot | 0x1<<SlashSlot | 0x1<<AsteriskSlot
 	str = "*/"
 	name = fmt.Sprintf("testString %s", str)
 	t.Run(name, func(t *testing.T) {
-		svp := new(SimpleValProfile)
+		svp = new(SimpleValProfile)
 		svp.Profile(str)
-		if svp.Flags != flags {
-			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
-		}
+		Confirm(t, svp, 0, 0, 2, 0, 0, flags, 0, unicode)
 	})
 	flags = 0x1 << HexSlot //| 0x1<<DigitSlot | 0x1<<LetterSlot
 	str = "0x"
@@ -278,9 +162,7 @@ func TestProfileSimpleVals(t *testing.T) {
 	t.Run(name, func(t *testing.T) {
 		svp := new(SimpleValProfile)
 		svp.Profile(str)
-		if svp.Flags != flags {
-			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
-		}
+		Confirm(t, svp, 1, 1, 0, 0, 0, flags, 0, unicode)
 	})
 	flags = 0x1 << HexSlot //| 0x1<<DigitSlot | 0x1<<LetterSlot
 	str = "0X"
@@ -288,49 +170,27 @@ func TestProfileSimpleVals(t *testing.T) {
 	t.Run(name, func(t *testing.T) {
 		svp := new(SimpleValProfile)
 		svp.Profile(str)
-		if svp.Flags != flags {
-			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
-		}
-		if svp.UnicodeFlags != nil {
-			t.Errorf("ProfileSimpleVal() expected no UnicodeFlags!")
-		}
+		Confirm(t, svp, 1, 1, 0, 0, 0, flags, 0, unicode)
 	})
+
 	const str2 = "日本語"
-	//flags = 0x1 << UnicodeCharSlot
-	unicode := []uint32{0, 0, 0, 9216, 1048576}
+	flags = 0
+	unicode = []uint32{0, 0, 0, 0, 0, 0, 9216, 0, 1048576}
 	name = fmt.Sprintf("testString %s", str2)
+
 	t.Run(name, func(t *testing.T) {
 		svp := new(SimpleValProfile)
 		svp.Profile(str2)
-		if svp.Flags != flags {
-			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
-		}
-		if svp.Spaces != uint8(len([]rune(str2))) {
-			t.Errorf("ProfileSimpleVal() Spaces = %d, want %d", svp.Spaces, uint8(len([]rune(str2))))
-		}
-		if svp.UnicodeFlags == nil || len(svp.UnicodeFlags) != len(unicode) || svp.UnicodeFlags[len(svp.UnicodeFlags)-1] != unicode[len(unicode)-1] {
-			t.Errorf("ProfileSimpleVal() UnicodeFlags = %v", svp.UnicodeFlags)
-		}
+		Confirm(t, svp, 0, 0, 0, 0, 0, 0, 3, unicode)
 	})
 	const str3 = "{!}"
 	flags = SetFlags([]int{ExclamationSlot, CurlyBrecketSlot})
+	unicode = []uint32{}
 	name = fmt.Sprintf("testString %s", str3)
 	t.Run(name, func(t *testing.T) {
 		svp := new(SimpleValProfile)
 		svp.Profile(str3)
-		if svp.Flags != flags {
-			t.Errorf("ProfileSimpleVal() Flags = %s, want %s", svp.NameFlags(), NameFlags(flags))
-		}
-		if svp.Spaces != uint8(len([]rune(str3))) {
-			t.Errorf("ProfileSimpleVal() Spaces = %d, want %d", svp.Spaces, uint8(len([]rune(str3))))
-		}
-		if svp.SpecialChars != uint8(len([]rune(str3))) {
-			t.Errorf("ProfileSimpleVal() SpecialChars = %d, want %d %v", svp.SpecialChars, uint8(len([]rune(str3))), svp)
-		}
-		if svp.UnicodeFlags != nil {
-			t.Errorf("ProfileSimpleVal() expected no UnicodeFlags!")
-		}
-
+		Confirm(t, svp, 0, 0, 3, 0, 0, flags, 0, unicode)
 	})
 	const str4 = "123"
 	flags = 0
@@ -338,19 +198,7 @@ func TestProfileSimpleVals(t *testing.T) {
 	t.Run(name, func(t *testing.T) {
 		svp := new(SimpleValProfile)
 		svp.Profile(str4)
-		if svp.Flags != flags {
-			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
-		}
-		if svp.Spaces != uint8(len([]rune(str4))) {
-			t.Errorf("ProfileSimpleVal() Spaces = %d, want %d", svp.Spaces, uint8(len([]rune(str4))))
-		}
-		if svp.Digits != uint8(len([]rune(str4))) {
-			t.Errorf("ProfileSimpleVal() Digits = %d, want %d", svp.Digits, uint8(len([]rune(str4))))
-		}
-		if svp.UnicodeFlags != nil {
-			t.Errorf("ProfileSimpleVal() expected no UnicodeFlags!")
-		}
-
+		Confirm(t, svp, 0, 3, 0, 0, 0, flags, 0, unicode)
 	})
 	const str5 = "aBc"
 	flags = 0
@@ -358,37 +206,16 @@ func TestProfileSimpleVals(t *testing.T) {
 	t.Run(name, func(t *testing.T) {
 		svp := new(SimpleValProfile)
 		svp.Profile(str5)
-		if svp.Flags != flags {
-			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
-		}
-		if svp.Spaces != uint8(len([]rune(str5))) {
-			t.Errorf("ProfileSimpleVal() Spaces = %d, want %d", svp.Spaces, uint8(len([]rune(str5))))
-		}
-		if svp.Letters != uint8(len([]rune(str5))) {
-			t.Errorf("ProfileSimpleVal() Letters = %d, want %d", svp.Letters, uint8(len([]rune(str5))))
-		}
-		if svp.UnicodeFlags != nil {
-			t.Errorf("ProfileSimpleVal() expected no UnicodeFlags!")
-		}
-
+		Confirm(t, svp, 3, 0, 0, 0, 0, flags, 0, unicode)
 	})
 	var str6 string = string([]rune{rune(200), rune(201), rune(202)})
-	//flags = 0x1 << UnicodeCharSlot
+	flags = 0
 	unicode = []uint32{1}
 	name = fmt.Sprintf("testString %s", str6)
 	t.Run(name, func(t *testing.T) {
 		svp := new(SimpleValProfile)
 		svp.Profile(str6)
-		if svp.Flags != flags {
-			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
-		}
-		if svp.Spaces != uint8(len([]rune(str6))) {
-			t.Errorf("ProfileSimpleVal() Spaces = %d, want %d", svp.Spaces, uint8(len([]rune(str6))))
-		}
-		if svp.UnicodeFlags == nil || len(svp.UnicodeFlags) != 1 || svp.UnicodeFlags[0] != 1 {
-			t.Errorf("ProfileSimpleVal() expected UnicodeFlags %v received %v!", unicode, svp.UnicodeFlags)
-		}
-
+		Confirm(t, svp, 0, 0, 0, 0, 0, flags, 3, unicode)
 	})
 	byteSlice := make([]rune, 255*2*26)
 	for j := 0; j < 26; j++ {
@@ -398,42 +225,164 @@ func TestProfileSimpleVals(t *testing.T) {
 		}
 	}
 	str7 := string(byteSlice)
-	flags = 0xFFFFFFFF
+	flags = 0x0FFFFFFF
 	unicode = []uint32{1}
 	t.Run("testString allletters", func(t *testing.T) {
 		svp := new(SimpleValProfile)
 		svp.Profile(str7)
-		if svp.Flags != flags {
-			t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
-		}
-		if svp.Spaces != uint8(len([]rune(str6))) {
-			t.Errorf("ProfileSimpleVal() Spaces = %d, want %d", svp.Spaces, uint8(len([]rune(str6))))
-		}
-		if svp.Sequences != uint8(len([]rune(str6))) {
-			t.Errorf("ProfileSimpleVal() Sequences = %d, want %d", svp.Sequences, uint8(len([]rune(str6))))
-		}
-		//if svp.Words != uint8(len([]rune(str6))) {
-		//	t.Errorf("ProfileSimpleVal() Words = %d, want %d", svp.Words, uint8(len([]rune(str6))))
-		//}
-		//if svp.Digits != uint8(len([]rune(str6))) {
-		//	t.Errorf("ProfileSimpleVal() Digits = %d, want %d", svp.Digits, uint8(len([]rune(str6))))
-		//}
-		if svp.SpecialChars != uint8(len([]rune(str6))) {
-			t.Errorf("ProfileSimpleVal() SpecialChars = %d, want %d", svp.SpecialChars, uint8(len([]rune(str6))))
-		}
-		if svp.Sequences != uint8(len([]rune(str6))) {
-			t.Errorf("ProfileSimpleVal() Sequences = %d, want %d", svp.Sequences, uint8(len([]rune(str6))))
-		}
-		//if svp.Words != uint8(len([]rune(str6))) {
-		//	t.Errorf("ProfileSimpleVal() Words = %d, want %d", svp.Words, uint8(len([]rune(str6))))
-		//}
-		//if svp.Numbers != uint8(len([]rune(str6))) {
-		//	t.Errorf("ProfileSimpleVal() Numbers = %d, want %d", svp.Numbers, uint8(len([]rune(str6))))
-		//}
-		if svp.UnicodeFlags == nil || len(svp.UnicodeFlags) != 1 || svp.UnicodeFlags[0] != 1 {
-			t.Errorf("ProfileSimpleVal() expected UnicodeFlags %v received %v!", unicode, svp.UnicodeFlags)
-		}
+		Confirm(t, svp, 255, 255, 255, 255, 255, flags, 255, unicode)
+	})
+}
 
+func ConfirmMulti(t *testing.T, svp *SimpleValProfile, letters uint8, digits uint8, specialChars uint8, spaces uint8,
+	nonReadables uint8, flags uint32, unicodes uint8, unicodeFlags []uint32, multi uint8) {
+	Confirm(t, svp, letters*multi, digits*multi, specialChars*multi, spaces*multi, nonReadables*multi, flags, unicodes*multi, unicodeFlags)
+}
+
+func Confirm(t *testing.T, svp *SimpleValProfile, letters uint8, digits uint8, specialChars uint8, spaces uint8,
+	nonReadables uint8, flags uint32, unicodes uint8, unicodeFlags []uint32) {
+	if svp.Flags != flags {
+		t.Errorf("ProfileSimpleVal() Flags = %b, want %b", svp.Flags, flags)
+	}
+	if svp.Spaces != spaces {
+		t.Errorf("ProfileSimpleVal() Spaces = %d instead of %d", svp.Spaces, spaces)
+	}
+	if svp.Letters != letters {
+		t.Errorf("ProfileSimpleVal() Letters = %d instead of %d", svp.Letters, letters)
+	}
+	if svp.Digits != digits {
+		t.Errorf("ProfileSimpleVal() Digits = %d instead of %d", svp.Digits, digits)
+	}
+	if svp.SpecialChars != specialChars {
+		t.Errorf("ProfileSimpleVal() SpecialChars = %d instead of %d", svp.SpecialChars, specialChars)
+	}
+	if svp.NonReadables != nonReadables {
+		t.Errorf("ProfileSimpleVal() NonReadables = %d instead of %d", svp.NonReadables, nonReadables)
+	}
+	if svp.Unicodes != unicodes {
+		t.Errorf("ProfileSimpleVal() Unicodes = %d instead of %d", svp.Unicodes, 0)
+	}
+	if len(svp.UnicodeFlags) != len(unicodeFlags) {
+		t.Errorf("ProfileSimpleVal() UnicodeFlags = %d instead of %d", len(svp.UnicodeFlags), len(unicodeFlags))
+	}
+	for i := 0; i < len(unicodeFlags); i++ {
+		if svp.UnicodeFlags[i] != unicodeFlags[i] {
+			t.Errorf("ProfileSimpleVal() UnicodeFlags[%d] = %d instead of %d", i, svp.UnicodeFlags[i], unicodeFlags[i])
+		}
+	}
+}
+
+func TestProfileChars0_127(t *testing.T) {
+	var unicodeFlags []uint32
+	var c uint8
+	for c = 0; c < 128; c++ {
+		r := rune(c)
+		str := string(r)
+
+		name := fmt.Sprintf("testString %s", str)
+		t.Run(name, func(t *testing.T) {
+			svp := new(SimpleValProfile)
+			svp.Profile(str)
+
+			switch asciiMap[c] {
+			case LetterSlot:
+				Confirm(t, svp, 1, 0, 0, 0, 0, 0, 0, unicodeFlags)
+			case DigitSlot:
+				Confirm(t, svp, 0, 1, 0, 0, 0, 0, 0, unicodeFlags)
+			case NonReadableSlot:
+				Confirm(t, svp, 0, 0, 0, 0, 1, 0, 0, unicodeFlags)
+			case SpaceSlot:
+				Confirm(t, svp, 0, 0, 0, 1, 0, 0, 0, unicodeFlags)
+			default:
+				Confirm(t, svp, 0, 0, 1, 0, 0, 1<<asciiMap[c], 0, unicodeFlags)
+			}
+		})
+	}
+}
+
+func TestProfileChars128_2560(t *testing.T) {
+	var unicodeFlags []uint32
+	for c := 128; c <= 25600; c += 128 {
+		r := rune(c)
+		str := string(r)
+		name := fmt.Sprintf("testString %s", str)
+		t.Run(name, func(t *testing.T) {
+			svp := new(SimpleValProfile)
+			svp.Profile(str)
+
+			block := (c / 0x80) - 1
+			blockBit := int(block & 0x1F)
+			blockElement := int(block / 0x20)
+
+			unicodeFlags = make([]uint32, blockElement+1)
+			unicodeFlags[blockElement] |= 0x1 << blockBit
+
+			Confirm(t, svp, 0, 0, 0, 0, 0, 0, 1, unicodeFlags)
+		})
+	}
+}
+
+func MultiCharTest(t *testing.T, str string, num uint8) {
+	var unicodeFlags []uint32
+	name := fmt.Sprintf("testString %s", str)
+	t.Run(name, func(t *testing.T) {
+		svp := new(SimpleValProfile)
+		svp.Profile(str)
+
+		switch asciiMap[str[0]] {
+		case LetterSlot:
+			ConfirmMulti(t, svp, 1, 0, 0, 0, 0, 0, 0, unicodeFlags, num)
+		case DigitSlot:
+			ConfirmMulti(t, svp, 0, 1, 0, 0, 0, 0, 0, unicodeFlags, num)
+		case NonReadableSlot:
+			ConfirmMulti(t, svp, 0, 0, 0, 0, 1, 0, 0, unicodeFlags, num)
+		case SpaceSlot:
+			ConfirmMulti(t, svp, 0, 0, 0, 1, 0, 0, 0, unicodeFlags, num)
+		default:
+			ConfirmMulti(t, svp, 0, 0, 1, 0, 0, 1<<asciiMap[str[0]], 0, unicodeFlags, num)
+		}
+	})
+}
+
+func TestProfileRepeatedChars(t *testing.T) {
+	t.Run("Repeated NonReadable", func(t *testing.T) {
+		MultiCharTest(t, strings.Repeat(string(rune(4)), 10), 10)
+		MultiCharTest(t, strings.Repeat(string(rune(4)), 1000), 255)
+	})
+	t.Run("Repeated Letter", func(t *testing.T) {
+		MultiCharTest(t, strings.Repeat(string(rune(65)), 10), 10)
+		MultiCharTest(t, strings.Repeat(string(rune(65)), 1000), 255)
+	})
+	t.Run("Repeated Digit", func(t *testing.T) {
+		MultiCharTest(t, strings.Repeat(string(rune(48)), 10), 10)
+		MultiCharTest(t, strings.Repeat(string(rune(48)), 1000), 255)
+	})
+	t.Run("Repeated Space", func(t *testing.T) {
+		MultiCharTest(t, strings.Repeat(string(rune(32)), 10), 10)
+		MultiCharTest(t, strings.Repeat(string(rune(32)), 1000), 255)
+	})
+	t.Run("Repeated SpacialChar", func(t *testing.T) {
+		MultiCharTest(t, strings.Repeat(string(rune(33)), 10), 10)
+		MultiCharTest(t, strings.Repeat(string(rune(33)), 1000), 255)
+	})
+	t.Run("Repeated SpacialChar", func(t *testing.T) {
+		MultiCharTest(t, strings.Repeat(string(rune(33)), 10), 10)
+		MultiCharTest(t, strings.Repeat(string(rune(33)), 1000), 255)
+	})
+
+	var unicodeFlags [1]uint32 = [1]uint32{1}
+	t.Run("Repeated 10 Unicode", func(t *testing.T) {
+		str := strings.Repeat(string(rune(128)), 10)
+		svp := new(SimpleValProfile)
+		svp.Profile(str)
+		ConfirmMulti(t, svp, 0, 0, 0, 0, 0, 0, 1, unicodeFlags[:], 10)
+	})
+
+	t.Run("Repeated 1000 Unicode", func(t *testing.T) {
+		str := strings.Repeat(string(rune(128)), 1000)
+		svp := new(SimpleValProfile)
+		svp.Profile(str)
+		ConfirmMulti(t, svp, 0, 0, 0, 0, 0, 0, 1, unicodeFlags[:], 255)
 	})
 
 }

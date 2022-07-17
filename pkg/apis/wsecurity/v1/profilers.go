@@ -36,8 +36,9 @@ func (p *Set) Append(a *Set) {
 		p.m = make(map[string]bool, len(a.List))
 	}
 	if p.List == nil {
-		p.List = make([]string, len(a.List))
+		p.List = make([]string, 0, len(a.List))
 	}
+
 	for _, v := range a.List {
 		if !p.m[v] {
 			p.m[v] = true
@@ -59,10 +60,10 @@ func AddToSetFromList(list []string, set *Set) {
 		set.m = make(map[string]bool, len(list))
 	}
 	if set.List == nil {
-		set.List = make([]string, len(list))
+		set.List = make([]string, 0, len(list))
 	}
 	for _, v := range list {
-		if !set.m[v] {
+		if v != "" && !set.m[v] {
 			set.m[v] = true
 			set.List = append(set.List, v)
 		}

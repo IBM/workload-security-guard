@@ -12,6 +12,6 @@ require (
 )
 
 require (
-	github.com/IBM/go-security-plugs v1.1.1-0.20220217135704-2792fac15905
+	github.com/IBM/go-security-plugs v1.2.1
 	github.com/gorilla/mux v1.8.0
 )

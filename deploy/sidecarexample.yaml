@@ -1,0 +1,80 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: protected-app
+spec:
+  selector:
+    app: protected-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 22000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: community-ingress-resource
+  annotations:
+    kubernetes.io/ingress.class: "public-iks-k8s-nginx"
+spec:
+  rules:
+  - host:  protected-app.kn1-e621c7d733ece1fad737ff54a8912822-0000.us-south.containers.appdomain.cloud
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: protected-app
+            port:
+              number: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: protected-app
+  labels:
+    app: protected-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: protected-app
+  template:
+    metadata:
+      labels:
+        app: protected-app
+    spec:
+      containers:
+      - name: user-container
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+      - name: protector
+        image: us.icr.io/dev_sec_ops/protector:latest
+        ports:
+        - containerPort: 22000	
+        volumeMounts:
+        - name: podinfo
+          mountPath: /etc/podinfo
+        env:
+          - name: SERVICENAME
+            value: "protected-app"
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath:  metadata.namespace
+          - name: RTPLUGS
+            value: "wsgate"
+          - name: SERVICEURL
+            value: "http://127.0.0.1:80"
+      volumes:
+      - name: podinfo
+        downwardAPI:
+          items:
+            - path: "app"
+              fieldRef:
+                fieldPath: metadata.labels['app']
+            
+          

@@ -57,6 +57,7 @@ type ProcessProfile struct {
 }
 
 func (p *ProcessPile) Add(pp *ProcessProfile) {
+	fmt.Println("Add")
 	p.CompletionTime = append(p.CompletionTime, pp.CompletionTime)
 	p.ResponseTime = append(p.ResponseTime, pp.ResponseTime)
 	p.Tcp4Peers.Add(pp.Tcp4Peers)
@@ -68,6 +69,7 @@ func (p *ProcessPile) Add(pp *ProcessProfile) {
 }
 
 func (p *ProcessPile) Clear() {
+	fmt.Println("Clear")
 	p.CompletionTime = make([]uint8, 0, 1)
 	p.ResponseTime = make([]uint8, 0, 1)
 	p.Tcp4Peers.Clear()
@@ -78,6 +80,7 @@ func (p *ProcessPile) Clear() {
 	p.Udplite6Peers.Clear()
 }
 func (p *ProcessPile) Append(a *ProcessPile) {
+	fmt.Println("Append")
 	p.CompletionTime = append(p.CompletionTime, a.CompletionTime...)
 	p.ResponseTime = append(p.ResponseTime, a.ResponseTime...)
 	p.Tcp4Peers.Append(&a.Tcp4Peers)
@@ -89,6 +92,7 @@ func (p *ProcessPile) Append(a *ProcessPile) {
 }
 
 func (config *ProcessConfig) Reconcile() {
+	fmt.Printf("Reconcile Process %v\n", config)
 	config.tcp4Peers = GetCidrsFromList(config.Tcp4Peers)
 	config.udp4Peers = GetCidrsFromList(config.Udp4Peers)
 	config.udplite4Peers = GetCidrsFromList(config.Udplite4Peers)
@@ -98,6 +102,7 @@ func (config *ProcessConfig) Reconcile() {
 }
 
 func (config *ProcessConfig) Learn(p *ProcessPile) {
+	fmt.Println("Learn")
 	config.tcp4Peers = GetCidrsFromIpList(p.Tcp4Peers.List)
 	config.udp4Peers = GetCidrsFromIpList(p.Udp4Peers.List)
 	config.udplite4Peers = GetCidrsFromIpList(p.Udplite4Peers.List)
@@ -112,7 +117,7 @@ func (config *ProcessConfig) Learn(p *ProcessPile) {
 	config.Udplite6Peers = config.udplite6Peers.Strings()
 	config.CompletionTime.Learn(p.CompletionTime)
 	config.ResponseTime.Learn(p.ResponseTime)
-	fmt.Printf("Config %v\n", config)
+	//fmt.Printf("Config %v\n", config)
 }
 
 func (config *ProcessConfig) Merge(m *ProcessConfig) {
@@ -134,6 +139,7 @@ func (config *ProcessConfig) Merge(m *ProcessConfig) {
 }
 
 func (config *ProcessConfig) Normalize() {
+	fmt.Println("Normalize")
 	config.ResponseTime = append(config.ResponseTime, U8Minmax{0, 0})
 	config.CompletionTime = append(config.CompletionTime, U8Minmax{0, 0})
 	//config.Tcp4Peers = new(CidrSet)
@@ -146,6 +152,7 @@ func (config *ProcessConfig) Normalize() {
 }
 
 func (config *ProcessConfig) Decide(pp *ProcessProfile) string {
+	fmt.Println("Decide Process")
 	//TBD move from string to net.IP and net.subnet, depend on a new IpSet rather than Set
 	/*
 		y := "1.2.4.6"
@@ -223,9 +230,9 @@ func (config *ProcessConfig) Marshal(depth int) string {
 
 // Allow typical values - use for development but not in production
 func (config *ProcessConfig) AddTypicalVal() {
-	config.ResponseTime = make([]U8Minmax, 0, 1)
+	config.ResponseTime = make([]U8Minmax, 1)
 	config.ResponseTime[0].Max = 60
-	config.CompletionTime = make([]U8Minmax, 0, 1)
+	config.CompletionTime = make([]U8Minmax, 1)
 	config.CompletionTime[0].Max = 120
 }
 

@@ -26,16 +26,18 @@ type Ctrl struct { // If guard needs to be consulted but is unavaliable => block
 }
 
 type Critiria struct {
-	Active  bool          `json:"active"`  // If not active, Critiria ignored
-	Req     ReqConfig     `json:"req"`     // Request critiria for blocking/allowing
-	Resp    RespConfig    `json:"resp"`    // Response critiria for blocking/allowing
-	Process ProcessConfig `json:"process"` // Processing critiria for blocking/allowing
+	Active   bool          `json:"active"`   // If not active, Critiria ignored
+	Req      ReqConfig     `json:"req"`      // Request critiria for blocking/allowing
+	Resp     RespConfig    `json:"resp"`     // Response critiria for blocking/allowing
+	ReqBody  BodyConfig    `json:"reqbody"`  // Request body critiria for blocking/allowing
+	RespBody BodyConfig    `json:"respbody"` // Response body critiria for blocking/allowing
+	Process  ProcessConfig `json:"process"`  // Processing critiria for blocking/allowing
 }
 
 type WsGate struct {
-	Configured *Critiria   `json:"configured"`        // configrued critiria
-	Learned    []*Critiria `json:"learned,omitempty"` // Learned citiria
-	Control    Ctrl        `json:"control"`           // Control
+	Configured *Critiria `json:"configured"`        // configrued critiria
+	Learned    *Critiria `json:"learned,omitempty"` // Learned citiria
+	Control    *Ctrl     `json:"control"`           // Control
 }
 
 func (g *WsGate) Reconcile() {
@@ -43,9 +45,7 @@ func (g *WsGate) Reconcile() {
 		g.Configured.Reconcile()
 	}
 	if g.Learned != nil {
-		for _, learned := range g.Learned {
-			learned.Reconcile()
-		}
+		g.Learned.Reconcile()
 	}
 	g.Control.Reconcile()
 }
@@ -60,10 +60,8 @@ func (g *WsGate) Marshal(depth int) string {
 		description.WriteString(shift)
 	}
 	if g.Learned != nil {
-		for i, leanred := range g.Learned {
-			description.WriteString(fmt.Sprintf("  Learned[%d]: %s", i, leanred.Marshal(depth+1)))
-			description.WriteString(shift)
-		}
+		description.WriteString(fmt.Sprintf("  Learned: %s", g.Learned.Marshal(depth+1)))
+		description.WriteString(shift)
 	}
 	description.WriteString(fmt.Sprintf("  Control: %s", g.Control.Marshal(depth+1)))
 	description.WriteString(shift)
@@ -75,14 +73,14 @@ func (c *Critiria) Learn(p *Pile) {
 	c.Req.Learn(&p.Req)
 	c.Resp.Learn(&p.Resp)
 	c.Process.Learn(&p.Process)
-	fmt.Printf("Critiria %v\n", c)
+	//fmt.Printf("Critiria %v\n", c)
 }
 func (c *Critiria) Merge(mc *Critiria) {
 	c.Active = c.Active || mc.Active
 	c.Req.Merge(&mc.Req)
 	c.Resp.Merge(&mc.Resp)
 	c.Process.Merge(&mc.Process)
-	fmt.Printf("Merged Critiria %v\n", c)
+	//fmt.Printf("Merged Critiria %v\n", c)
 }
 
 func (c *Critiria) Reconcile() {
@@ -100,6 +98,8 @@ func (c *Critiria) Marshal(depth int) string {
 	var description bytes.Buffer
 	shift := strings.Repeat("  ", depth)
 	description.WriteString("{\n")
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  Active: %v\n", c.Active))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Req: %s", c.Req.Marshal(depth+1)))
 	description.WriteString(shift)

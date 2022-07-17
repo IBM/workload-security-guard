@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"mime"
 	"net"
 	"net/http"
 	"strings"
@@ -22,6 +23,7 @@ type ReqPile struct {
 	HopIp         IpPile  `json:"hopip"`         // 1.2.3.4
 	Method        Set     `json:"method"`        // GET
 	Proto         Set     `json:"proto"`         // "HTTP/1.1"
+	MediaType     Set     `json:"mediatype"`     // "text/html"
 	ContentLength []uint8 `json:"contentlength"` // 0
 
 	Url     UrlPile     `json:"url"`
@@ -34,10 +36,12 @@ type ReqConfig struct {
 	hopIp         CidrSet
 	method        Set
 	proto         Set
+	mediaType     Set
 	ClientIp      []string      `json:"cip"`           // subnets for external IPs (normally empty)
 	HopIp         []string      `json:"hopip"`         // subnets for external IPs
 	Method        []string      `json:"method"`        // GET
 	Proto         []string      `json:"proto"`         // "HTTP/1.1"
+	MediaType     []string      `json:"mediatype"`     // "text/html"
 	ContentLength U8MinmaxSlice `json:"contentlength"` // 0
 	Url           UrlConfig     `json:"url"`
 	Qs            QueryConfig   `json:"qs"`
@@ -49,6 +53,7 @@ type ReqProfile struct {
 	HopIp         *IpSet          `json:"hopip"`         // 1.2.3.4
 	Method        string          `json:"method"`        // GET
 	Proto         string          `json:"proto"`         // "HTTP/1.1"
+	MediaType     string          `json:"mediatype"`     // "text/html"
 	ContentLength uint8           `json:"contentlength"` // 0
 	Url           *UrlProfile     `json:"url"`
 	Qs            *QueryProfile   `json:"qs"`
@@ -134,7 +139,7 @@ func (u *UrlProfile) Profile(path string) {
 		numSegments = 0xFF
 	}
 	u.Segments = uint8(numSegments)
-	fmt.Printf("Path %s, segments %v, len %d\n", path, segments, numSegments)
+	//fmt.Printf("Path %s, segments %v, len %d\n", path, segments, numSegments)
 }
 
 func (u *UrlProfile) Marshal(depth int) string {
@@ -242,7 +247,7 @@ func (p *QueryPile) Append(a *QueryPile) {
 
 func (q *QueryProfile) Profile(m map[string][]string) {
 	q.Kv = new(KeyValProfile)
-	q.Kv.Profile(m)
+	q.Kv.Profile(m, nil)
 }
 
 func (config *QueryConfig) Normalize() {
@@ -316,9 +321,11 @@ func (p *HeadersPile) Append(a *HeadersPile) {
 	p.Kv.Append(a.Kv)
 }
 
+var excpetionHeaders = map[string]bool{"Content-Type": true}
+
 func (h *HeadersProfile) Profile(m map[string][]string) {
 	h.Kv = new(KeyValProfile)
-	h.Kv.Profile(m)
+	h.Kv.Profile(m, excpetionHeaders)
 }
 
 func (h *HeadersProfile) Marshal(depth int) string {
@@ -422,10 +429,14 @@ func (rp *RespPile) Marshal(depth int) string {
 }
 
 func (p *ReqPile) Add(rp *ReqProfile) {
+	fmt.Println("Add ReqProfile")
 	p.ClientIp.Add(rp.ClientIp)
 	p.HopIp.Add(rp.HopIp)
 	p.Method.Add(rp.Method)
 	p.Proto.Add(rp.Proto)
+	if rp.MediaType != "" {
+		p.MediaType.Add(rp.MediaType)
+	}
 	p.ContentLength = append(p.ContentLength, rp.ContentLength)
 	p.Url.Add(rp.Url)
 	p.Qs.Add(rp.Qs)
@@ -436,6 +447,7 @@ func (p *ReqPile) Clear() {
 	p.ClientIp.Clear()
 	p.Method.Clear()
 	p.Proto.Clear()
+	p.MediaType.Clear()
 	p.ContentLength = make([]uint8, 0, 1)
 	p.Url.Clear()
 	p.Qs.Clear()
@@ -443,9 +455,12 @@ func (p *ReqPile) Clear() {
 }
 
 func (p *ReqPile) Append(a *ReqPile) {
+	fmt.Println("Append ReqPile")
+
 	p.ClientIp.Append(&a.ClientIp)
 	p.Method.Append(&a.Method)
 	p.Proto.Append(&a.Proto)
+	p.MediaType.Append(&a.MediaType)
 	p.ContentLength = append(p.ContentLength, a.ContentLength...)
 	p.Url.Append(&a.Url)
 	p.Qs.Append(&a.Qs)
@@ -457,6 +472,9 @@ func (rp *ReqProfile) Profile(req *http.Request, cip net.IP) {
 	var ok bool
 	var hopipstr string
 	var hopip net.IP
+	var mediatype string
+	var params map[string]string
+	var err error
 
 	// TBD - Add support for rfc7239 "forwarded" header
 	forwarded, ok = req.Header["X-Forwarded-For"]
@@ -470,17 +488,28 @@ func (rp *ReqProfile) Profile(req *http.Request, cip net.IP) {
 		hopip = net.ParseIP(hopipstr)
 		rp.HopIp = IpSetFromIp(hopip)
 	}
-	fmt.Printf("HOP-IP %v %s %s %s \n", hopip, hopipstr, req.Header["X-Forwarded-For"], req.Header["Forwarded"])
+	//fmt.Printf("HOP-IP %v %s %s %s \n", hopip, hopipstr, req.Header["X-Forwarded-For"], req.Header["Forwarded"])
 	rp.ClientIp = IpSetFromIp(cip)
 	rp.HopIp = IpSetFromIp(hopip)
 
 	rp.Method = req.Method
 	rp.Proto = req.Proto
+
 	log2length := uint8(0)
 	length := req.ContentLength
-	for length > 0 {
-		log2length++
-		length >>= 1
+	mediatype = ""
+	if length > 0 {
+		for length > 0 {
+			log2length++
+			length >>= 1
+		}
+		mediatype, params, err = mime.ParseMediaType(req.Header.Get("Content-Type"))
+		if err != nil {
+			fmt.Printf("err ParseMediaType %s Content-Type %s (%v) \n", err.Error(), req.Header.Get("Content-Type"), req.Header["Content-Type"])
+			mediatype = "X-CAN-NOT-PARSE-MEDIA-TYPE"
+		}
+		_ = params // TBD  - what should we do with params?
+		rp.MediaType = mediatype
 	}
 	rp.ContentLength = log2length
 	rp.Url = new(UrlProfile)
@@ -499,6 +528,8 @@ func (rp *ReqProfile) Marshal(depth int) string {
 	description.WriteString(fmt.Sprintf("  Method: %v\n", rp.Method))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Proto: %v\n", rp.Proto))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  MediaType: %v\n", rp.MediaType))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  ClientIp: %v\n", rp.ClientIp))
 	description.WriteString(shift)
@@ -525,6 +556,8 @@ func (rp *ReqPile) Marshal(depth int) string {
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Proto: %v\n", rp.Proto))
 	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  MediaType: %v\n", rp.MediaType))
+	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  ClientIp: %v\n", rp.ClientIp))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  HopIp: %v\n", rp.HopIp))
@@ -548,28 +581,34 @@ func (config *RespConfig) Reconcile() {
 }
 
 func (config *ReqConfig) Reconcile() {
+	fmt.Printf("Reconcile ReqConfig (%d) %v \n", len(config.ClientIp), config.ClientIp)
 	config.clientIp = GetCidrsFromList(config.ClientIp)
 	config.hopIp = GetCidrsFromList(config.HopIp)
 	AddToSetFromList(config.Method, &config.method)
 	AddToSetFromList(config.Proto, &config.proto)
+	AddToSetFromList(config.MediaType, &config.mediaType)
 }
 
 func (config *ReqConfig) Learn(p *ReqPile) {
+	fmt.Println("Learn ReqConfig")
 	config.clientIp = GetCidrsFromIpList(p.ClientIp.List)
 	config.hopIp = GetCidrsFromIpList(p.HopIp.List)
 	config.method.Append(&p.Method)
 	config.proto.Append(&p.Proto)
+	config.mediaType.Append(&p.MediaType)
 	config.ContentLength.Learn(p.ContentLength)
 	config.Headers.Learn(&p.Headers)
 	config.Qs.Learn(&p.Qs)
 	config.Url.Learn(&p.Url)
 	config.Method = config.method.List
 	config.Proto = config.proto.List
+	config.MediaType = config.mediaType.List
 	config.ClientIp = config.clientIp.Strings()
 	config.HopIp = config.hopIp.Strings()
 }
 
 func (config *ReqConfig) Merge(mc *ReqConfig) {
+	fmt.Println("Merge ReqConfig")
 	config.clientIp.Merge(mc.clientIp)
 	config.hopIp.Merge(mc.hopIp)
 	config.method.Append(&mc.method)
@@ -580,6 +619,7 @@ func (config *ReqConfig) Merge(mc *ReqConfig) {
 	config.Url.Merge(&mc.Url)
 	config.Method = config.method.List
 	config.Proto = config.proto.List
+	config.MediaType = config.mediaType.List
 	config.ClientIp = config.clientIp.Strings()
 	config.HopIp = config.hopIp.Strings()
 }
@@ -642,6 +682,12 @@ func (config *ReqConfig) Decide(rp *ReqProfile) string {
 	if ret != "" {
 		return fmt.Sprintf("Proto: %s", ret)
 	}
+	if rp.MediaType != "" {
+		ret = config.mediaType.Decide(rp.MediaType)
+		if ret != "" {
+			return fmt.Sprintf("MediaType: %s", ret)
+		}
+	}
 	ret = config.ContentLength.Decide(rp.ContentLength)
 	if ret != "" {
 		return fmt.Sprintf("ContentLength: %s", ret)
@@ -668,6 +714,8 @@ func (config *ReqConfig) Marshal(depth int) string {
 	description.WriteString(fmt.Sprintf("  Method: %v\n", config.Method))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Proto: %v\n", config.Proto))
+	description.WriteString(shift)
+	description.WriteString(fmt.Sprintf("  MediaType: %v\n", config.MediaType))
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  ClientIp: %v\n", config.ClientIp))
 	description.WriteString(shift)

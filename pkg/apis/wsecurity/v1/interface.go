@@ -6,12 +6,27 @@ import (
 	"time"
 )
 
+/*
+type PileInterface interface {
+	Append(*Pile)
+	Marshal() string
+	Pile(*ProfileInterface)
+	Clear()
+}
+
+type ProfileInterface interface {
+	DeepCopyInto(*ProfileInterface)
+}
+*/
+
 type SessionProfile struct {
-	Alert   bool
-	ReqTime time.Time
-	Req     ReqProfile
-	Resp    RespProfile
-	Process ProcessProfile
+	Alert    bool
+	ReqTime  time.Time
+	Req      ReqProfile
+	Resp     RespProfile
+	ReqBody  BodyProfile
+	RespBody BodyProfile
+	Process  ProcessProfile
 }
 
 type Pile struct {

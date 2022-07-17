@@ -15,10 +15,8 @@ type SimpleValConfig struct {
 	Letters      U8MinmaxSlice `json:"letters"`
 	SpecialChars U8MinmaxSlice `json:"schars"`
 	Sequences    U8MinmaxSlice `json:"sequences"`
-	//Words        U8MinmaxSlice `json:"words"`
-	//Numbers      U8MinmaxSlice `json:"numbers"`
-	UnicodeFlags Uint32Slice `json:"unicodeFlags"` //[]uint32
-	Mandatory    bool        `json:"mandatory"`
+	UnicodeFlags Uint32Slice   `json:"unicodeFlags"` //[]uint32
+	Mandatory    bool          `json:"mandatory"`
 }
 
 type SimpleValPile struct {
@@ -60,42 +58,69 @@ type SimpleValProfile struct {
 // 123-126 (4) slots 29-32
 // 127 (1) nonReadableRCharCounter
 // Slots:
-// <SPACE> ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~
-//    0    1 2 3 4 5 6 7 8 8 9 0 1 2 3 4 5 6 7 8 7 9 0 1 2 1 3 4 5 6 7 6 9 0 1 2
+//    ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~
+//    0 1 2 3 4 5 6 7 8 8 9 0 1 2 3 4 5 6 7 8 7 9 0 1 2 1 3 4 5 6 7 6 8 9 0 1 2
+// Slots for Ascii 0-127
+
 const ( // Slots for Ascii 0-127
-	SpaceSlot           = iota // 32
-	ExclamationSlot            // 33
-	DoubleQouteSlot            // 34
-	NumberSlot                 // 35
-	DollarSlot                 // 36
-	PrecentSlot                // 37
-	AmpersandSlot              // 38
-	SingleQouteSlot            // 39
-	RoundBrecketSlot           // 40, 41
-	AsteriskSlot               // 42
-	PlusSlot                   // 43 (10)
-	CommaSlot                  // 44
-	MinusSlot                  // 45
-	PeriodSlot                 // 46
-	SlashSlot                  // 47
-	ColonSlot                  // 58 (15)
-	SemiSlot                   // 59
-	LtGtSlot                   // 60, 62
-	EqualSlot                  //61
-	QuestionSlot               // 63
-	AtSlot                     // 64 (20)
-	BackslashSlot              // 92 (21)
-	SquareBrecketSlot          // 91, 93
-	PowerSlot                  // 94
-	UnderscoreSlot             // 95
-	AccentSlot                 // 96
-	PipeSlot                   // 124 (26)
-	CurlyBrecketSlot           // 123, 125
-	HomeSlot                   // 126
-	NonReadableCharSlot        // 0-31, 127 (29)
-	CommentsSlot
-	HexSlot // (31)
+
+	ExclamationSlot   = iota // 33 (0)
+	DoubleQouteSlot          // 34 (1)
+	NumberSlot               // 35
+	DollarSlot               // 36
+	PrecentSlot              // 37
+	AmpersandSlot            // 38
+	SingleQouteSlot          // 39
+	RoundBrecketSlot         // 40, 41
+	AsteriskSlot             // 42
+	PlusSlot                 // 43 (9)
+	CommaSlot                // 44 (10)
+	MinusSlot                // 45
+	PeriodSlot               // 46
+	SlashSlot                // 47
+	ColonSlot                // 58 (14)
+	SemiSlot                 // 59
+	LtGtSlot                 // 60, 62
+	EqualSlot                // 61
+	QuestionSlot             // 63
+	AtSlot                   // 64 (19)
+	BackslashSlot            // 92 (20)
+	SquareBrecketSlot        // 91, 93 (21)
+	PowerSlot                // 94
+	UnderscoreSlot           // 95
+	AccentSlot               // 96
+	PipeSlot                 // 124 (25)
+	CurlyBrecketSlot         // 123, 125 (26)
+	HomeSlot                 // 126 (27)
+	Unused_1_Slot            // (28)
+	Unused_2_Slot            // (29)
+	CommentsSlot             // (30)
+	HexSlot                  // (31)
+	// ---------------------------  up to here are flags
+	LetterSlot      // (32)
+	DigitSlot       // (33)
+	NonReadableSlot // (34)
+	SpaceSlot       // (35)
 )
+
+var asciiMap [128]uint8 = [128]uint8{
+	NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, // 0-7
+	NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot,
+	NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot,
+	NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, NonReadableSlot, // 24-31
+	SpaceSlot, ExclamationSlot, DoubleQouteSlot, NumberSlot, DollarSlot, PrecentSlot, AmpersandSlot, SingleQouteSlot, // 32-39
+	RoundBrecketSlot, RoundBrecketSlot, AsteriskSlot, PlusSlot, CommaSlot, MinusSlot, PeriodSlot, SlashSlot, // 40-47
+	DigitSlot, DigitSlot, DigitSlot, DigitSlot, DigitSlot, DigitSlot, DigitSlot, DigitSlot, // 48-55
+	DigitSlot, DigitSlot, ColonSlot, SemiSlot, LtGtSlot, EqualSlot, LtGtSlot, QuestionSlot, // 56-63
+	AtSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, // 64-71
+	LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, // 72-79
+	LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, // 80-87
+	LetterSlot, LetterSlot, LetterSlot, SquareBrecketSlot, BackslashSlot, SquareBrecketSlot, PowerSlot, UnderscoreSlot, // 88-95
+	AccentSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, // 96-103
+	LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, // 104-111
+	LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, LetterSlot, // 112-119
+	LetterSlot, LetterSlot, LetterSlot, CurlyBrecketSlot, PipeSlot, CurlyBrecketSlot, HomeSlot, NonReadableSlot, // 120-127
+}
 
 /*
 const ( // Slots for any code
@@ -136,36 +161,36 @@ const ( // sequence types
 )
 
 var FlagName = map[int]string{
-	SpaceSlot:           "Space",
-	ExclamationSlot:     "Exclamation",
-	DoubleQouteSlot:     "DoubleQoute",
-	NumberSlot:          "NumberSign",
-	DollarSlot:          "DollarSign",
-	PrecentSlot:         "PrecentSign",
-	SingleQouteSlot:     "SingleQoute",
-	RoundBrecketSlot:    "RoundBrecket",
-	AsteriskSlot:        "MultiplySign",
-	PlusSlot:            "PlusSign",
-	AtSlot:              "CommentSign",
-	MinusSlot:           "MinusSign",
-	PeriodSlot:          "DotSign",
-	SlashSlot:           "DivideSign",
-	ColonSlot:           "ColonSign",
-	SemiSlot:            "SemicolonSign",
-	LtGtSlot:            "Less/GreaterThanSign",
-	EqualSlot:           "EqualSign",
-	QuestionSlot:        "QuestionMark",
-	CommaSlot:           "CommaSign",
-	SquareBrecketSlot:   "SquareBrecket",
-	BackslashSlot:       "ReverseDivideSign",
-	PowerSlot:           "PowerSign",
-	UnderscoreSlot:      "UnderscoreSign",
-	AccentSlot:          "AccentSign",
-	CurlyBrecketSlot:    "CurlyBrecket",
-	PipeSlot:            "PipeSign",
-	NonReadableCharSlot: "NonReadableChar",
-	CommentsSlot:        "CommentsCombination",
-	HexSlot:             "HexCombination",
+	SpaceSlot:         "Space",
+	ExclamationSlot:   "Exclamation",
+	DoubleQouteSlot:   "DoubleQoute",
+	NumberSlot:        "NumberSign",
+	DollarSlot:        "DollarSign",
+	PrecentSlot:       "PrecentSign",
+	SingleQouteSlot:   "SingleQoute",
+	RoundBrecketSlot:  "RoundBrecket",
+	AsteriskSlot:      "MultiplySign",
+	PlusSlot:          "PlusSign",
+	AtSlot:            "CommentSign",
+	MinusSlot:         "MinusSign",
+	PeriodSlot:        "DotSign",
+	SlashSlot:         "DivideSign",
+	ColonSlot:         "ColonSign",
+	SemiSlot:          "SemicolonSign",
+	LtGtSlot:          "Less/GreaterThanSign",
+	EqualSlot:         "EqualSign",
+	QuestionSlot:      "QuestionMark",
+	CommaSlot:         "CommaSign",
+	SquareBrecketSlot: "SquareBrecket",
+	BackslashSlot:     "ReverseDivideSign",
+	PowerSlot:         "PowerSign",
+	UnderscoreSlot:    "UnderscoreSign",
+	AccentSlot:        "AccentSign",
+	CurlyBrecketSlot:  "CurlyBrecket",
+	PipeSlot:          "PipeSign",
+	NonReadableSlot:   "NonReadableChar",
+	CommentsSlot:      "CommentsCombination",
+	HexSlot:           "HexCombination",
 }
 
 func SetFlags(slots []int) (f uint32) {
@@ -252,10 +277,10 @@ func (config *SimpleValConfig) Merge(m *SimpleValConfig) {
 	config.Letters.Merge(m.Letters)
 	config.SpecialChars.Merge(m.SpecialChars)
 	config.Sequences.Merge(m.Sequences)
-	config.Flags ^= m.Flags
+	config.Flags |= m.Flags
 	for i, v := range m.UnicodeFlags {
 		if i < len(config.UnicodeFlags) {
-			config.UnicodeFlags[i] ^= v
+			config.UnicodeFlags[i] |= v
 		} else {
 			config.UnicodeFlags = append(config.UnicodeFlags, v)
 		}
@@ -279,10 +304,10 @@ func (config *SimpleValConfig) Decide(svp *SimpleValProfile) string {
 	//flagsL = flagsL & ^config.FlagsL
 	//flagsH = flagsH & ^config.FlagsH
 	//flags := convert32To64(flagsL, flagsH)
-	flags := svp.Flags & ^config.Flags
 	//if (flagsL != 0) || (flagsH != 0) {
 	//return fmt.Sprintf("Unexpected FlagsL %s (%x) in Value", NameFlags(flags), flags)
 	//}
+	flags := svp.Flags & ^config.Flags
 	if flags != 0 {
 		return fmt.Sprintf("Unexpected Flags %s (%x) in Value", NameFlags(flags), flags)
 	}
@@ -365,6 +390,7 @@ func (p *SimpleValPile) Append(a *SimpleValPile) {
 // potentially some small content of special chars
 // typically no unicode
 func (svp *SimpleValProfile) Profile(str string) {
+	//fmt.Printf("Profiling SimpleValProfile %s\n", str)
 	var flags uint32
 	unicodeFlags := []uint32{}
 	digitCounter := uint(0)
@@ -382,95 +408,43 @@ func (svp *SimpleValProfile) Profile(str string) {
 	//letters := 0
 	seqType := seqNone
 	seqPrevType := seqNone
+	var asciiType uint8
 	for _, c := range str {
 		//letter := false
 		//digit := false
 		totalCounter++
-		if c < 'a' { //0-96
-			if c < 'A' { // 0-64
-				if c < '0' { //0-47
-					if c > 32 { //33-47
-						seqType = seqSpecialChar
-						specialCharCounter++
-						slot := uint(c - 32)
-						if c >= 41 { //41-47
-							slot = slot - 1
-						}
-						flags |= 0x1 << slot
-						if c == '/' {
-							if asterisk {
-								flags |= 1 << CommentsSlot
-							}
-						}
-						if slash && c == '*' {
-							flags |= 1 << CommentsSlot
-						}
-						if minus && c == '-' {
-							flags |= 1 << CommentsSlot
-						}
-					} else if c < 32 { //0-31
-						seqType = seqNonReadable
-						nonReadableCounter++
-						flags |= 1 << NonReadableCharSlot
-					} else { //32 space
-						seqType = seqSpace
-						spaceCounter++
-						flags |= 0x1
-					}
-				} else if c <= '9' { //48-57  012..9
-					seqType = seqDigit
-					digitCounter++
-					//digit = true
-					//digits++
-				} else { //58-64
-					seqType = seqSpecialChar
-					specialCharCounter++
-					slot := uint(c - 58 + 15)
-					if c > 61 { // 63-64
-						slot = slot - 1
-						if c == 62 { //62
-							slot = slot - 1
-						}
-					}
-					flags |= 0x1 << slot
-				}
-			} else if c <= 'Z' { //65-90    ABC..Z
+		if c < 128 { //0-127
+			asciiType = asciiMap[c]
+			switch asciiType {
+			case LetterSlot:
 				seqType = seqLetter
 				letterCounter++
-				if zero && c == 'X' {
+				if zero && (c == 'X' || c == 'x') {
 					flags |= 0x1 << HexSlot
 				}
-				//letter = true
-				//letters++
-			} else { //91-96
+			case DigitSlot:
+				seqType = seqDigit
+				digitCounter++
+			case NonReadableSlot:
+				seqType = seqNonReadable
+				nonReadableCounter++
+			case SpaceSlot:
+				seqType = seqSpace
+				spaceCounter++
+			default:
 				seqType = seqSpecialChar
 				specialCharCounter++
-				slot := uint(c - 91 + 20)
-				if c == 91 {
-					slot = slot + 2
+				flags |= 0x1 << asciiType
+				if asterisk && c == '/' {
+					flags |= 1 << CommentsSlot
 				}
-				flags |= 0x1 << slot
+				if slash && c == '*' {
+					flags |= 1 << CommentsSlot
+				}
+				if minus && c == '-' {
+					flags |= 1 << CommentsSlot
+				}
 			}
-		} else if c <= 'z' { //97-122   abc..z
-			seqType = seqLetter
-			letterCounter++
-			if zero && c == 'x' {
-				flags |= 0x1 << HexSlot
-			}
-			//letter = true
-			//letters++
-		} else if c < 127 { //123-126
-			seqType = seqSpecialChar
-			specialCharCounter++
-			slot := uint(c - 123 + 25)
-			if c == 123 {
-				slot = slot + 2
-			}
-			flags |= 0x1 << slot
-		} else if c < 128 { //127
-			seqType = seqNonReadable
-			nonReadableCounter++
-			flags |= 0x1 << NonReadableCharSlot
 		} else {
 			// Unicode -  128 and onwards
 
@@ -488,6 +462,94 @@ func (svp *SimpleValProfile) Profile(str string) {
 			}
 			unicodeFlags[blockElement] |= 0x1 << blockBit
 		}
+		/*
+			if c < 'a' { //0-96
+				if c < 'A' { // 0-64
+					if c < '0' { //0-47
+						if c > 32 { //33-47
+							seqType = seqSpecialChar
+							specialCharCounter++
+							slot := uint(c - 32)
+							if c >= 41 { //41-47
+								slot = slot - 1
+							}
+							flags |= 0x1 << slot
+							if c == '/' {
+								if asterisk {
+									flags |= 1 << CommentsSlot
+								}
+							}
+							if slash && c == '*' {
+								flags |= 1 << CommentsSlot
+							}
+							if minus && c == '-' {
+								flags |= 1 << CommentsSlot
+							}
+						} else if c < 32 { //0-31
+							seqType = seqNonReadable
+							nonReadableCounter++
+							flags |= 1 << NonReadableSlot
+						} else { //32 space
+							seqType = seqSpace
+							spaceCounter++
+							flags |= 0x1
+						}
+					} else if c <= '9' { //48-57  012..9
+						seqType = seqDigit
+						digitCounter++
+						//digit = true
+						//digits++
+					} else { //58-64
+						seqType = seqSpecialChar
+						specialCharCounter++
+						slot := uint(c - 58 + 15)
+						if c > 61 { // 63-64
+							slot = slot - 1
+							if c == 62 { //62
+								slot = slot - 1
+							}
+						}
+						flags |= 0x1 << slot
+					}
+				} else if c <= 'Z' { //65-90    ABC..Z
+					seqType = seqLetter
+					letterCounter++
+					if zero && c == 'X' {
+						flags |= 0x1 << HexSlot
+					}
+					//letter = true
+					//letters++
+				} else { //91-96
+					seqType = seqSpecialChar
+					specialCharCounter++
+					slot := uint(c - 91 + 20)
+					if c == 91 {
+						slot = slot + 2
+					}
+					flags |= 0x1 << slot
+				}
+			} else if c <= 'z' { //97-122   abc..z
+				seqType = seqLetter
+				letterCounter++
+				if zero && c == 'x' {
+					flags |= 0x1 << HexSlot
+				}
+				//letter = true
+				//letters++
+			} else if c < 127 { //123-126
+				seqType = seqSpecialChar
+				specialCharCounter++
+				slot := uint(c - 123 + 25)
+				if c == 123 {
+					slot = slot + 2
+				}
+				flags |= 0x1 << slot
+			} else if c < 128 { //127
+				seqType = seqNonReadable
+				nonReadableCounter++
+				flags |= 0x1 << NonReadableSlot
+		*/
+
 		zero = (c == '0')
 		asterisk = (c == '*')
 		slash = (c == '/')
@@ -497,22 +559,7 @@ func (svp *SimpleValProfile) Profile(str string) {
 			sequenceCounter++
 			seqPrevType = seqType
 		}
-
-		//if letters > 0 && !letter {
-		//	wordCounter++
-		//	letters = 0
-		//}
-		//if digits > 0 && !digit {
-		//	numberCounter++
-		///	digits = 0
-		//}
 	}
-	//if letters > 0 {
-	//	wordCounter++
-	//}
-	//if digits > 0 {
-	//	numberCounter++
-	//}
 	if totalCounter > 0xFF {
 		totalCounter = 0xFF
 		if digitCounter > 0xFF {
@@ -536,12 +583,6 @@ func (svp *SimpleValProfile) Profile(str string) {
 		if sequenceCounter > 0xFF {
 			sequenceCounter = 0xFF
 		}
-		//if numberCounter > 0xFF {
-		//	numberCounter = 0xFF
-		//}
-		//if wordCounter > 0xFF {
-		//	wordCounter = 0xFF
-		//}
 	}
 
 	svp.Spaces = uint8(spaceCounter)
@@ -565,6 +606,7 @@ func (svp *SimpleValProfile) Profile(str string) {
 func (svp *SimpleValProfile) Marshal(depth int) string {
 	var description bytes.Buffer
 	shift := strings.Repeat("  ", depth)
+	description.WriteString(shift)
 	description.WriteString("{\n")
 	description.WriteString(shift)
 	description.WriteString(fmt.Sprintf("  Flags: 0x%x,\n", svp.Flags))

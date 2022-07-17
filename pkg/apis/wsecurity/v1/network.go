@@ -135,7 +135,7 @@ NextLine:
 			}
 			//fmt.Printf("Proccessed IPv6 %s\n", ip.String())
 		} else {
-			fmt.Printf("Proccessed skipped IP structrue\n")
+			//fmt.Printf("Proccessed skipped IP structrue\n")
 			return nil, nil
 		}
 
@@ -145,7 +145,7 @@ NextLine:
 			continue NextLine
 		}
 
-		fmt.Printf("Adding IP %s (not unspecified, private or loopback!)\n", ip.String())
+		//fmt.Printf("Adding IP %s (not unspecified, private or loopback!)\n", ip.String())
 		return ip, data
 	}
 
@@ -267,50 +267,56 @@ func (cidrs CidrSet) Strings() (s []string) {
 }
 
 func GetCidrsFromIpList(list []string) CidrSet {
-	cidr := make([]net.IPNet, len(list))
-	var n int
+	cidrs := make([]net.IPNet, 0, len(list))
 	var ipNet *net.IPNet
 	var err error
 	for _, v := range list {
+		fmt.Printf("** GetCidrsFromIpList %v - before %v\n", cidrs, v)
 		if strings.Contains(v, ":") {
 			_, ipNet, err = net.ParseCIDR(v + "/128")
 		} else {
 			_, ipNet, err = net.ParseCIDR(v + "/32")
 		}
 		if err == nil {
-			fmt.Printf("CIDRS found CIDR %v\n", ipNet)
-
-			cidr[n].IP = make(net.IP, len(ipNet.IP))
-			cidr[n].Mask = make(net.IPMask, len(ipNet.Mask))
-			copy(cidr[n].IP, ipNet.IP)
-			copy(cidr[n].Mask, ipNet.Mask)
-			n++
+			var cidr net.IPNet
+			fmt.Printf("** GetCidrsFromIpList found CIDR %v \n", ipNet)
+			//cidrs = append(cidrs, *ipNet)
+			cidr.IP = make(net.IP, len(ipNet.IP))
+			cidr.Mask = make(net.IPMask, len(ipNet.Mask))
+			copy(cidr.IP, ipNet.IP)
+			copy(cidr.Mask, ipNet.Mask)
+			cidrs = append(cidrs, cidr)
+			fmt.Printf("** GetCidrsFromIpList %v - after %v\n", cidrs, v)
 			continue
 		}
-		fmt.Printf("Ilegal cidr %s is skipped during GetCidrsFromList\n", v)
+		fmt.Printf("** GetCidrsFromIpList Ilegal cidr %s is skipped - %s\n", v, err.Error())
 	}
-	fmt.Printf("CIDRS %v\n", cidr)
-	return cidr
+	if len(cidrs) > 0 {
+		fmt.Printf("** GetCidrsFromIpList CIDRS %v\n", cidrs)
+	}
+	return cidrs
 }
 
 func GetCidrsFromList(list []string) CidrSet {
-	cidr := make([]net.IPNet, len(list))
-	var n int
+	cidrs := make([]net.IPNet, 0, len(list))
 	for _, v := range list {
 		_, ipNet, err := net.ParseCIDR(v)
 		if err == nil {
-			fmt.Printf("CIDRS found CIDR %v\n", ipNet)
-
-			cidr[n].IP = make(net.IP, len(ipNet.IP))
-			cidr[n].Mask = make(net.IPMask, len(ipNet.Mask))
-			copy(cidr[n].IP, ipNet.IP)
-			copy(cidr[n].Mask, ipNet.Mask)
-			n++
+			var cidr net.IPNet
+			fmt.Printf("CIDRS found CIDR %v in GetCidrsFromList\n", ipNet)
+			//cidrs = append(cidrs, *ipNet)
+			cidr.IP = make(net.IP, len(ipNet.IP))
+			cidr.Mask = make(net.IPMask, len(ipNet.Mask))
+			copy(cidr.IP, ipNet.IP)
+			copy(cidr.Mask, ipNet.Mask)
+			cidrs = append(cidrs, cidr)
 			continue
 		}
-		fmt.Printf("Ilegal cidr %s is skipped during GetCidrsFromList\n", v)
+		fmt.Printf("Ilegal cidr %s is skipped during GetCidrsFromList - %s\n", v, err.Error())
 	}
-	fmt.Printf("CIDRS %v\n", cidr)
-	return cidr
+	if len(cidrs) > 0 {
+		fmt.Printf("GetCidrsFromList CIDRS %v\n", cidrs)
+	}
+	return cidrs
 
 }
