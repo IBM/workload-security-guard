@@ -1,6 +1,5 @@
-// iofilter can help filter data arriving from an io.ReadCloser
-// It allows wraping an existing io.ReadCloser provider and filter
-// the data before exposing it it up the chain.
+// iodup can help dulicate data arriving from an io.ReadCloser
+// It allows wraping an existing io.ReadCloser provider and duplciate it to n readers
 package iodup
 
 import (
@@ -9,7 +8,7 @@ import (
 	"time"
 )
 
-// An Iofilter object maintining internal buffers and state
+// An Iodup object maintining internal buffers and state
 type Out struct {
 	outBuf  []byte
 	bufChan chan []byte
@@ -26,7 +25,7 @@ type Iodup struct {
 	src        io.ReadCloser
 }
 
-// Create a New iofilter to wrap an existing provider of an io.ReadCloser interface
+// Create a New iodup to wrap an existing provider of an io.ReadCloser interface
 // The new iodup.out[] will expose an io.ReadCloser interface
 // The optional params may include a two integer parameter indicating:
 // 1. The number of outputs (defualt is 2)
@@ -36,7 +35,7 @@ type Iodup struct {
 // and deliver the data to the Readwer using an internal channel
 func New(src io.ReadCloser, params ...uint) (iod *Iodup) {
 	var numOutputs, numBufs, sizeBuf uint
-	//fmt.Printf("params: %v\n", params)
+	fmt.Printf("params: %v\n", params)
 	switch len(params) {
 	case 0:
 		numOutputs = 2

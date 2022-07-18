@@ -47,6 +47,9 @@ func (g *WsGate) Reconcile() {
 	if g.Learned != nil {
 		g.Learned.Reconcile()
 	}
+	if g.Control == nil {
+		g.Control = new(Ctrl)
+	}
 	g.Control.Reconcile()
 }
 

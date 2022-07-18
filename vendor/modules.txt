@@ -1,4 +1,4 @@
-# github.com/IBM/go-security-plugs v1.2.1
+# github.com/IBM/go-security-plugs v1.3.6
 ## explicit
 github.com/IBM/go-security-plugs/iodup
 github.com/IBM/go-security-plugs/iofilter

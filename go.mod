@@ -12,6 +12,9 @@ require (
 )
 
 require (
-	github.com/IBM/go-security-plugs v1.2.1
+	github.com/IBM/go-security-plugs v1.3.6
 	github.com/gorilla/mux v1.8.0
+
 )
+
+// replace github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.5.5

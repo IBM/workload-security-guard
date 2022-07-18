@@ -34,7 +34,7 @@ type Iofilter struct {
 // and deliver the data to the Readwer using an internal channel
 func New(src io.ReadCloser, filter func(buf []byte, state interface{}), state interface{}, params ...uint) (iof *Iofilter) {
 	var numBufs, sizeBuf uint
-	//fmt.Printf("params: %v\n", params)
+	fmt.Printf("params: %v\n", params)
 	switch len(params) {
 	case 0:
 		numBufs = 3

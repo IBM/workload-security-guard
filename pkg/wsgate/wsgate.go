@@ -256,6 +256,7 @@ func (p *plug) screenRequest(req *http.Request, rp *spec.ReqProfile) error {
 	ctrl := p.wsGate.Control
 	//fmt.Printf("screenRequest ctrl %v\n", ctrl)
 	var criteria *spec.Critiria
+	fmt.Printf("p.wsGate %v ctrl %v\n", p.wsGate, ctrl)
 	if criteria = p.wsGate.Configured; ctrl.Auto {
 		pi.Log.Infof("Using Learned Critiria!")
 		criteria = p.wsGate.Learned

@@ -309,6 +309,8 @@ func (k *Kubemgr) FetchConfig(ns string, sid string, cm bool) *spec.GuardianSpec
 	if gurdianSpec == nil {
 		fmt.Println("Guardian was not set!")
 		gurdianSpec = new(spec.GuardianSpec)
+		(*spec.WsGate)(gurdianSpec).Reconcile()
+		fmt.Printf("Guardian was not Reconciled! %v\n", gurdianSpec)
 		// default gurdianSpec has:
 		// 		gurdianSpec.falseAllow=false
 		// 		gurdianSpec.ConsultGuard.Active = false
