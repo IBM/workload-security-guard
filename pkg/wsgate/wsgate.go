@@ -37,6 +37,7 @@ type ctxKey string
 type plug struct {
 	name    string
 	version string
+	config  map[string]string
 
 	kubemgr Kubemgr
 
@@ -845,8 +846,10 @@ func (p *plug) reportAllow() {
 	}
 }
 
-func (p *plug) Init() {
+func (p *plug) Init(c map[string]string) {
 	var servicename, namespace, guardUrl string
+	p.config = c
+
 	pi.Log.Infof("plug %s: Initializing - version %v", p.name, p.version)
 
 	guardUrl = os.Getenv("WSGATE_GUARD_URL")

@@ -142,7 +142,7 @@ func (k *Kubemgr) SetCm(ns string, sid string, guardianSpec *spec.GuardianSpec) 
 		}
 		gbytes, err = json.Marshal(g)
 		if err != nil {
-			fmt.Printf("SetCm %s: Error marshaling data: %s\n", cmname, err.Error())
+			//fmt.Printf("SetCm %s: Error marshaling data: %s\n", cmname, err.Error())
 			return fmt.Sprintf("SetCm %s: Error marshaling data: %s", cmname, err.Error())
 		}
 		cm.Data["Guardian"] = string(gbytes)
@@ -153,28 +153,28 @@ func (k *Kubemgr) SetCm(ns string, sid string, guardianSpec *spec.GuardianSpec) 
 
 		_, err = k.clientset.CoreV1().ConfigMaps(ns).Update(context.TODO(), cm, metav1.UpdateOptions{})
 		if err != nil {
-			fmt.Printf("SetCm %s: Error updating resource: %s\n", cmname, err.Error())
+			//fmt.Printf("SetCm %s: Error updating resource: %s\n", cmname, err.Error())
 			return fmt.Sprintf("SetCm %s: Error updating resource: %s", cmname, err.Error())
 		}
 
-		fmt.Printf("setCm %s: guardian update succesfull\n", cmname)
+		//fmt.Printf("setCm %s: guardian update succesfull\n", cmname)
 	} else {
-		fmt.Printf("setCm %s: guardian read err %s\n", cmname, err.Error())
+		//fmt.Printf("setCm %s: guardian read err %s\n", cmname, err.Error())
 		cm = new(corev1.ConfigMap)
 		cm.Name = cmname
 		cm.Data = make(map[string]string, 1)
 		gbytes, err = json.Marshal(guardianSpec)
 		if err != nil {
-			fmt.Printf("SetCm %s: Error marshaling data during create: %s\n", cmname, err.Error())
+			//fmt.Printf("SetCm %s: Error marshaling data during create: %s\n", cmname, err.Error())
 			return fmt.Sprintf("SetCm %s: Error marshaling data during create: %s", cmname, err.Error())
 		}
 		cm.Data["Guardian"] = string(gbytes)
 		_, err = k.clientset.CoreV1().ConfigMaps(ns).Create(context.TODO(), cm, metav1.CreateOptions{})
 		if err != nil {
-			fmt.Printf("SetCm %s: Error creating resource: %s\n", cmname, err.Error())
+			//fmt.Printf("SetCm %s: Error creating resource: %s\n", cmname, err.Error())
 			return fmt.Sprintf("SetCm %s: Error creating resource: %s", cmname, err.Error())
 		}
-		fmt.Printf("setCm %s: guardian create succesfull\n", cmname)
+		//fmt.Printf("setCm %s: guardian create succesfull\n", cmname)
 	}
 
 	return ""
@@ -190,11 +190,11 @@ func (k *Kubemgr) SetCrd(ns string, sid string, guardianSpec *spec.GuardianSpec)
 	var err error
 	g, err = k.gClient.Guardians(ns).Get(context.TODO(), sid, metav1.GetOptions{})
 	if err == nil {
-		if g.Spec.Learned != nil {
-			fmt.Printf("setCrd: guardian read Method %d %v\n", len(g.Spec.Learned.Req.Method), g.Spec.Learned.Req.Method)
-		} else {
-			fmt.Printf("setCrd: guardian read g.Spec.Learned is nil\n")
-		}
+		//if g.Spec.Learned != nil {
+		//	fmt.Printf("setCrd: guardian read Method %d %v\n", len(g.Spec.Learned.Req.Method), g.Spec.Learned.Req.Method)
+		//} else {
+		//	fmt.Printf("setCrd: guardian read g.Spec.Learned is nil\n")
+		//}
 		g.Name = sid
 		if guardianSpec != nil {
 			if guardianSpec.Control != nil {
@@ -227,7 +227,7 @@ func (k *Kubemgr) SetCrd(ns string, sid string, guardianSpec *spec.GuardianSpec)
 		//fmt.Printf("setCrd: guardian create succesfull %v\n", g)
 	}
 
-	fmt.Printf("setCrd: success!\n")
+	//fmt.Printf("setCrd: success!\n")
 	return ""
 }
 
@@ -307,10 +307,8 @@ func (k *Kubemgr) FetchConfig(ns string, sid string, cm bool) *spec.GuardianSpec
 	}
 
 	if gurdianSpec == nil {
-		fmt.Println("Guardian was not set!")
 		gurdianSpec = new(spec.GuardianSpec)
 		(*spec.WsGate)(gurdianSpec).Reconcile()
-		fmt.Printf("Guardian was not Reconciled! %v\n", gurdianSpec)
 		// default gurdianSpec has:
 		// 		gurdianSpec.falseAllow=false
 		// 		gurdianSpec.ConsultGuard.Active = false
