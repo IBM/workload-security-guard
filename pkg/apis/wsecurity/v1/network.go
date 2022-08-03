@@ -51,7 +51,6 @@ func (cidr CidrSet) Decide(ips *IpSet) string {
 	if ips == nil {
 		return ""
 	}
-	fmt.Printf("func (%v) Decide(%v)\n", cidr, ips)
 	for _, ip := range ips.list {
 		if ip.IsUnspecified() || ip.IsLoopback() || ip.IsPrivate() {
 			continue
@@ -271,7 +270,7 @@ func GetCidrsFromIpList(list []string) CidrSet {
 	var ipNet *net.IPNet
 	var err error
 	for _, v := range list {
-		fmt.Printf("** GetCidrsFromIpList %v - before %v\n", cidrs, v)
+		//fmt.Printf("** GetCidrsFromIpList %v - before %v\n", cidrs, v)
 		if strings.Contains(v, ":") {
 			_, ipNet, err = net.ParseCIDR(v + "/128")
 		} else {
@@ -279,21 +278,21 @@ func GetCidrsFromIpList(list []string) CidrSet {
 		}
 		if err == nil {
 			var cidr net.IPNet
-			fmt.Printf("** GetCidrsFromIpList found CIDR %v \n", ipNet)
+			//fmt.Printf("** GetCidrsFromIpList found CIDR %v \n", ipNet)
 			//cidrs = append(cidrs, *ipNet)
 			cidr.IP = make(net.IP, len(ipNet.IP))
 			cidr.Mask = make(net.IPMask, len(ipNet.Mask))
 			copy(cidr.IP, ipNet.IP)
 			copy(cidr.Mask, ipNet.Mask)
 			cidrs = append(cidrs, cidr)
-			fmt.Printf("** GetCidrsFromIpList %v - after %v\n", cidrs, v)
+			//fmt.Printf("** GetCidrsFromIpList %v - after %v\n", cidrs, v)
 			continue
 		}
-		fmt.Printf("** GetCidrsFromIpList Ilegal cidr %s is skipped - %s\n", v, err.Error())
+		//fmt.Printf("** GetCidrsFromIpList Ilegal cidr %s is skipped - %s\n", v, err.Error())
 	}
-	if len(cidrs) > 0 {
-		fmt.Printf("** GetCidrsFromIpList CIDRS %v\n", cidrs)
-	}
+	//if len(cidrs) > 0 {
+	//fmt.Printf("** GetCidrsFromIpList CIDRS %v\n", cidrs)
+	//}
 	return cidrs
 }
 
@@ -303,7 +302,7 @@ func GetCidrsFromList(list []string) CidrSet {
 		_, ipNet, err := net.ParseCIDR(v)
 		if err == nil {
 			var cidr net.IPNet
-			fmt.Printf("CIDRS found CIDR %v in GetCidrsFromList\n", ipNet)
+			//fmt.Printf("CIDRS found CIDR %v in GetCidrsFromList\n", ipNet)
 			//cidrs = append(cidrs, *ipNet)
 			cidr.IP = make(net.IP, len(ipNet.IP))
 			cidr.Mask = make(net.IPMask, len(ipNet.Mask))
@@ -314,9 +313,9 @@ func GetCidrsFromList(list []string) CidrSet {
 		}
 		fmt.Printf("Ilegal cidr %s is skipped during GetCidrsFromList - %s\n", v, err.Error())
 	}
-	if len(cidrs) > 0 {
-		fmt.Printf("GetCidrsFromList CIDRS %v\n", cidrs)
-	}
+	//if len(cidrs) > 0 {
+	//fmt.Printf("GetCidrsFromList CIDRS %v\n", cidrs)
+	//}
 	return cidrs
 
 }

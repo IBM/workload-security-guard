@@ -44,6 +44,18 @@ type StructuredPile struct {
 	Kv   map[string]*StructuredPile `json:"kv"`   // used for: object items
 }
 
+func (config *StructuredConfig) Learn(p *StructuredPile) {
+	//??? config.Kind.Learn(p.)
+	config.Val.Learn(p.Val)
+	//config.Kv.Lean(p.Kv)
+}
+
+func (config *StructuredConfig) Merge(m *StructuredConfig) {
+	//??? config.Kind.Learn(p.)
+	config.Val.Merge(m.Val)
+	//config.Kv.Merge(m.Kv)
+}
+
 //  JsonProfile struct - maintain the profile of a json with some structure
 //	Data Types: The default Golang data types for decoding and encoding JSON are as follows:
 //		bool for JSON booleans.
@@ -220,4 +232,8 @@ func (jp *StructuredProfile) Marshal(depth int) string {
 	}
 
 	return description.String()
+}
+
+func (p *StructuredPile) Append(a *StructuredPile) {
+
 }

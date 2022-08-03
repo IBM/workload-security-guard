@@ -540,8 +540,9 @@ spec:
         unicodes: []
   control:
     alert: true
-    auto: false
-    block: true
+    auto: true
+    block: false
+    force: true
     consult: false
     learn: true
     rpm: 60

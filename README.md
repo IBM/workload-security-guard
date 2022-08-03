@@ -15,7 +15,7 @@ A Guardian CRD incldues the Gate specifications and controlls the Gate behaviour
 
 ## Security
 The Gate makes it hard to deliver an exploit to be used against a vulnerability embedded as part of the service or its dependencies.
-As a general rule, an attacker wil be required to build a dedicated delivery mechanism to explore options for detecting and exploiting vulnerabilities for each service and will not be able to use common statistical attacks patterns.  
+As a general rule, an attacker will be required to build a dedicated delivery mechanism to explore options for detecting and exploiting vulnerabilities for each service and will not be able to use common statistical attacks patterns.  
 
 This is achieved thanks to a find grain filtering performed against each value delivered to the service.
 

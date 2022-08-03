@@ -3,9 +3,11 @@
 package rtplugs
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -77,6 +79,7 @@ func (rt *RoundTrip) RoundTrip(req *http.Request) (resp *http.Response, err erro
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			pi.Log.Warnf("rtplus Recovered from panic during RoundTrip! Recover: %v\n", recovered)
+			pi.Log.Infof("rtplus stacktrace from panic: \n %s\n" + string(debug.Stack()))
 			err = errors.New("paniced during RoundTrip")
 			resp = nil
 		}
@@ -95,22 +98,57 @@ func (rt *RoundTrip) RoundTrip(req *http.Request) (resp *http.Response, err erro
 // env RTPLUGS defines a comma seperated list of plug names
 // A typical RTPLUGS value would be "rtplug,wsplug"
 // The plugs may be added statically (using imports) or dynmaicaly (.so files)
-func New(l pi.Logger) (rt *RoundTrip) {
+func New(logger pi.Logger) (rt *RoundTrip) {
 	pluglist := os.Getenv("RTPLUGS")
-	return NewPlugs(pluglist, l)
-}
-
-// NewPlugs(pluglist, pi.Logger) will attempt to strat a list of plugs
-// Use NewPlus rather than New when the list of plugs is managed by the caller
-func NewPlugs(pluglist string, l pi.Logger) (rt *RoundTrip) {
-	// Immidiatly return nil if pluglist is not set
 	if pluglist == "" {
 		return
 	}
 
+	comma := func(c rune) bool {
+		return c == ','
+	}
+	plugs := strings.FieldsFunc(pluglist, comma)
+
+	namespace := os.Getenv("NAMESPACE")
+	if namespace == "" {
+		dat, err := os.ReadFile("/etc/podinfo/namespace")
+		if err == nil {
+			namespace = string(dat)
+		}
+	}
+	svcname := os.Getenv("SERVICENAME")
+	if svcname == "" {
+		dat, err := os.ReadFile("/etc/podinfo/servicename")
+		if err == nil {
+			svcname = string(dat)
+		}
+	}
+
+	if namespace == "" || svcname == "" {
+		// mandatory
+		panic("Can't find mandatory parameter namespace")
+	}
+
+	_, rt = NewConfigrablePlugs(context.Background(), logger, svcname, namespace, plugs, nil)
+	return rt
+}
+
+// NewConfigrablePlugs(name, namespace, plugs, config, logger)
+// Start `plugs` configured by `config`, to protect service `name` in `namespace`
+
+// Context() wraps an existing RoundTripper
+//
+// Once the existing RoundTripper is wrapped, data flowing to and from the
+// existing RoundTripper will be screened using the security plugs
+func NewConfigrablePlugs(ctxin context.Context, logger pi.Logger, svcname string, namespace string, plugs []string, c map[string]map[string]string) (ctxout context.Context, rt *RoundTrip) {
+	//skip for an empty pluglist
+	if len(plugs) == 0 {
+		return
+	}
+
 	// Set logger for the entire RTPLUGS mechanism
-	if l != nil {
-		pi.Log = l
+	if logger != nil {
+		pi.Log = logger
 	}
 
 	// Never panic the caller app from here
@@ -123,21 +161,33 @@ func NewPlugs(pluglist string, l pi.Logger) (rt *RoundTrip) {
 		}
 	}()
 
-	plugs := strings.Split(pluglist, ",")
-
+	ctxout = ctxin
 	for _, plugName := range plugs {
+		var foundPlug bool
 		for _, p := range pi.RoundTripPlugs {
 			if p.PlugName() == plugName {
+				foundPlug = true
+				var plugConfig map[string]string
+				if c != nil {
+					plugConfig = c[plugName]
+				}
 				// found a loaded plug, lets activate it
-				p.Init()
+				pi.Log.Infof("Activating Plug %s with config %v", plugName, plugConfig)
+				ctxout = p.Init(ctxout, plugConfig, svcname, namespace, logger)
 				if rt == nil {
 					rt = new(RoundTrip)
 				}
 				rt.roundTripPlugs = append(rt.roundTripPlugs, p)
-				pi.Log.Infof("rtplugs Plugin %s is activated", plugName)
 				break
 			}
 		}
+		if !foundPlug {
+			pi.Log.Infof("Plug %s is not supported by this image. Consult your IT", plugName)
+		}
+
+	}
+	for _, p := range rt.roundTripPlugs {
+		pi.Log.Debugf("Plug %s version %s is active for service %s namespace %s", p.PlugName(), p.PlugVersion(), svcname, namespace)
 	}
 	return
 }
@@ -148,7 +198,7 @@ func NewPlugs(pluglist string, l pi.Logger) (rt *RoundTrip) {
 // existing RoundTripper will be screened using the security plugs
 func (rt *RoundTrip) Transport(t http.RoundTripper) http.RoundTripper {
 	if t == nil {
-		pi.Log.Infof("(rt *RoundTrip) received a nil transport\n")
+		pi.Log.Debugf("Transport received a nil transport\n")
 		t = http.DefaultTransport
 	}
 	rt.next = t

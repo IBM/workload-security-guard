@@ -429,7 +429,6 @@ func (rp *RespPile) Marshal(depth int) string {
 }
 
 func (p *ReqPile) Add(rp *ReqProfile) {
-	fmt.Println("Add ReqProfile")
 	p.ClientIp.Add(rp.ClientIp)
 	p.HopIp.Add(rp.HopIp)
 	p.Method.Add(rp.Method)
@@ -455,8 +454,6 @@ func (p *ReqPile) Clear() {
 }
 
 func (p *ReqPile) Append(a *ReqPile) {
-	fmt.Println("Append ReqPile")
-
 	p.ClientIp.Append(&a.ClientIp)
 	p.Method.Append(&a.Method)
 	p.Proto.Append(&a.Proto)
@@ -505,7 +502,7 @@ func (rp *ReqProfile) Profile(req *http.Request, cip net.IP) {
 		}
 		mediatype, params, err = mime.ParseMediaType(req.Header.Get("Content-Type"))
 		if err != nil {
-			fmt.Printf("err ParseMediaType %s Content-Type %s (%v) \n", err.Error(), req.Header.Get("Content-Type"), req.Header["Content-Type"])
+			//fmt.Printf("err ParseMediaType %s Content-Type %s (%v) \n", err.Error(), req.Header.Get("Content-Type"), req.Header["Content-Type"])
 			mediatype = "X-CAN-NOT-PARSE-MEDIA-TYPE"
 		}
 		_ = params // TBD  - what should we do with params?
@@ -581,7 +578,6 @@ func (config *RespConfig) Reconcile() {
 }
 
 func (config *ReqConfig) Reconcile() {
-	fmt.Printf("Reconcile ReqConfig (%d) %v \n", len(config.ClientIp), config.ClientIp)
 	config.clientIp = GetCidrsFromList(config.ClientIp)
 	config.hopIp = GetCidrsFromList(config.HopIp)
 	AddToSetFromList(config.Method, &config.method)
@@ -590,7 +586,6 @@ func (config *ReqConfig) Reconcile() {
 }
 
 func (config *ReqConfig) Learn(p *ReqPile) {
-	fmt.Println("Learn ReqConfig")
 	config.clientIp = GetCidrsFromIpList(p.ClientIp.List)
 	config.hopIp = GetCidrsFromIpList(p.HopIp.List)
 	config.method.Append(&p.Method)
@@ -608,7 +603,6 @@ func (config *ReqConfig) Learn(p *ReqPile) {
 }
 
 func (config *ReqConfig) Merge(mc *ReqConfig) {
-	fmt.Println("Merge ReqConfig")
 	config.clientIp.Merge(mc.clientIp)
 	config.hopIp.Merge(mc.hopIp)
 	config.method.Append(&mc.method)

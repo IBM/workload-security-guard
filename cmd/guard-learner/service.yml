@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: guard-service
+  namespace: knative-guard
+spec:
+  selector:
+    app: guard-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8888

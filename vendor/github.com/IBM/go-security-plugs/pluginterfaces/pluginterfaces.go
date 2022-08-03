@@ -2,6 +2,7 @@
 package pluginterfaces
 
 import (
+	"context"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -25,7 +26,7 @@ var Log Logger
 //		func NewPlug()  RoundTripPlug {}
 //
 type RoundTripPlug interface {
-	Init()
+	Init(ctx context.Context, c map[string]string, serviceName string, namespace string, logger Logger) context.Context
 	Shutdown()
 	PlugName() string
 	PlugVersion() string

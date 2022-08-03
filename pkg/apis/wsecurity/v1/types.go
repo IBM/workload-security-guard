@@ -94,8 +94,8 @@ type ReqConfig struct {
 }
 
 type WsGate struct {
-	Req          ReqConfig `json:"req"`        // Main critiria for blocking/allowing
-	ConsultGuard Consult   `json:"consult"`    // If blocked by main critiria, consult guard (if avaliable)
+	Req          ReqConfig `json:"req"`        // Main criteria for blocking/allowing
+	ConsultGuard Consult   `json:"consult"`    // If blocked by main criteria, consult guard (if avaliable)
 	ForceAllow   bool      `json:"forceAllow"` // Allow no matter what! Overides all blocking.
 }
 */
