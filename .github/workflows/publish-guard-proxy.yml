@@ -27,9 +27,9 @@ jobs:
           echo "${{ github.token }}" | ko login ghcr.io --username "dummy" --password-stdin
           # Set KO_DOCKER_REPO for future steps.
           repo=${{ github.repository }} 
-          
-          echo "KO_DOCKER_REPO=ghcr.io/${repo@L}"
-          echo "KO_DOCKER_REPO=ghcr.io/${repo@L}" >> $GITHUB_ENV      
+          repo=`echo "$repo" | tr '[:upper:]' '[:lower:]'`
+          echo "KO_DOCKER_REPO=ghcr.io/${repo}"
+          echo "KO_DOCKER_REPO=ghcr.io/${repo}" >> $GITHUB_ENV      
       
       - run: ko build ./cmd/guard-rproxy
     
