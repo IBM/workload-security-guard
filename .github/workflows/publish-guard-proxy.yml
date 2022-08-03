@@ -17,5 +17,5 @@ jobs:
       - uses: imjasonh/setup-ko@v0.4
         env:
           KO_DOCKER_REPO: my.registry/my-repo
-      - run: ko publish ./cmd/queue-proxy/
+      - run: ko build ./cmd/app ./cmd/queue-proxy
       
