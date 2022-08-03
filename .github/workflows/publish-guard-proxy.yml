@@ -13,9 +13,24 @@ jobs:
         with:
           go-version: 1.18
       - uses: actions/checkout@v2
-
-      - uses: imjasonh/setup-ko@v0.4
-        env:
-          KO_DOCKER_REPO: my.registry/my-repo
-      - run: ko build ./cmd/guard-rproxy
       
+      - shell: bash
+        run: |
+          set -ex
+          # Install ko:
+          tag=$(curl -s -u "username:${{ github.token }}" https://api.github.com/repos/google/ko/releases/latest | jq -r '.tag_name')
+          os=${{ runner.os }}
+          if [[ ! -z ${tag} ]]; then
+            echo "Installing ko @ ${tag} for ${os}"
+            curl -fsL https://github.com/google/ko/releases/download/${tag}/ko_${tag:1}_${os}_x86_64.tar.gz | sudo tar xzf - -C /usr/local/bin ko
+          fi
+          echo "${{ github.token }}" | ko login ghcr.io --username "dummy" --password-stdin
+          # Set KO_DOCKER_REPO for future steps.
+          echo "KO_DOCKER_REPO=ghcr.io/${{ github.repository }}"
+          echo "KO_DOCKER_REPO=ghcr.io/${{ github.repository }}" >> $GITHUB_ENV      
+      
+      - run: ko build ./cmd/guard-rproxy
+    
+      
+      
+    
