@@ -2,7 +2,9 @@ name: Publish Guard Proxy
 
 on:
   push:
-    branches: ['main']
+    # Pattern matched against refs/tags
+    tags:        
+      - '*'           # Push events to every tag not containing /
 
 jobs:
   publish:
@@ -27,11 +29,11 @@ jobs:
           echo "${{ github.token }}" | ko login ghcr.io --username "dummy" --password-stdin
           # Set KO_DOCKER_REPO for future steps.
           repo=${{ github.repository }} 
+          tags=${{ steps.meta.outputs.tags }}
           repo=`echo "$repo" | tr '[:upper:]' '[:lower:]'`
           echo "KO_DOCKER_REPO=ghcr.io/${repo}"
           echo "KO_DOCKER_REPO=ghcr.io/${repo}" >> $GITHUB_ENV      
-      
-      - run: ko build ./cmd/guard-rproxy
+          ko build ./cmd/guard-rproxy
     
       
       
