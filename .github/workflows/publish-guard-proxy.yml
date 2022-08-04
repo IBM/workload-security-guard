@@ -33,7 +33,7 @@ jobs:
           repo=`echo "$repo" | tr '[:upper:]' '[:lower:]'`
           echo "KO_DOCKER_REPO=ghcr.io/${repo}"
           echo "KO_DOCKER_REPO=ghcr.io/${repo}" >> $GITHUB_ENV      
-      - run: ko build ./cmd/guard-rproxy
+      - run: ko build -B ./cmd/guard-rproxy
     
       
       
