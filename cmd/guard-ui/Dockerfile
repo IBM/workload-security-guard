@@ -7,6 +7,7 @@ FROM node:latest as fe
 WORKDIR /
 
 COPY cmd/guard-ui/frontend/ ./
+RUN npm install
 RUN npm run build
 
 ##
