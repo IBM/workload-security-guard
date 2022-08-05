@@ -516,10 +516,10 @@ func main() {
 	//data.Configured = new(spec.Criteria)
 	//data.Configured.Req.AddTypicalVal()
 	//l.kmgr.SetCrd("default", "mytestservice", data)
-	fmt.Printf("Starting guard-learner on port 80\n")
+	fmt.Printf("Starting guard-learner on port 8888\n")
 	http.HandleFunc("/config", l.fetchConfig)
 	http.HandleFunc("/req", l.consultOnReq)
 	http.HandleFunc("/pile", l.processPile)
-	err := http.ListenAndServe(":80", nil)
+	err := http.ListenAndServe(":8888", nil)
 	fmt.Printf("Failed to start %v\n", err)
 }

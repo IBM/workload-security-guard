@@ -24,7 +24,7 @@ WORKDIR /
 
 COPY --from=build /guard-learner /guard-learner
 
-EXPOSE 80
+EXPOSE 8888
 
 USER nonroot:nonroot
 
