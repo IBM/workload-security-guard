@@ -824,7 +824,8 @@ func (p *plug) Init(ctx context.Context, c map[string]string, serviceName string
 		panic("Ilegal Svcname - ns.{Namespace} is reserved")
 	}
 
-	pi.Log.Debugf("guardgate configuration: servicename=%s, namespace=%s, cmname=%t, guardUrl=%s", p.serviceName, p.namespace, p.useConfigmap, p.guardUrl)
+	pi.Log.Debugf("guardgate configuration: servicename=%s, namespace=%s, cmname=%t, guardUrl=%s, p.monitorPod=%t, guardian-load-interval %v, report-pile-interval %v, pod-monitor-interval %v",
+		p.serviceName, p.namespace, p.useConfigmap, p.guardUrl, p.monitorPod, c["guardian-load-interval"], c["report-pile-interval"], c["pod-monitor-interval"])
 
 	p.clearPile()
 	p.statistics = make(map[string]uint32, 8)
