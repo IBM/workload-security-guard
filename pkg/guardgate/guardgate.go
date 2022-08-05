@@ -554,8 +554,12 @@ func (p *plug) securityMonitor(ctx context.Context, sp *spec.SessionProfile) boo
 			// Should we learn?
 			if p.wsGate.Control.Learn && (sp.Alert == "" || p.wsGate.Control.Force) && sp.Resp.Headers != nil {
 				// Learn only if asked to learn and we received a response
+				if p.monitorPod {
+					p.pile.Pile(sp, &p.pod)
+				} else {
+					p.pile.Pile(sp, nil)
+				}
 
-				p.pile.Pile(sp, &p.pod)
 				p.pileCount += 1
 				pi.Log.Debugf("Learn - add to pile! pileCount %d", p.pileCount)
 			}

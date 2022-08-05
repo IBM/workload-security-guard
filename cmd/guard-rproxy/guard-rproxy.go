@@ -132,7 +132,6 @@ func main() {
 	}
 
 	plugConfig["monitor-pod"] = "false"
-	plugConfig["pod-monitor-interval"] = "6s"
 
 	log.Infof("guard-proxy serving serviceName: %s, namespace: %s, serviceUrl: %s", env.ServiceName, env.Namespace, env.ServiceUrl)
 	parsedUrl, err := url.Parse(env.ServiceUrl)
