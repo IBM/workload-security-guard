@@ -3,7 +3,7 @@
 ##
 ## Build
 ##
-FROM golang:1.17 AS build
+FROM golang:1.18 AS build
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ COPY go.sum ./
 RUN go mod download && go mod verify
 
 COPY . .
-RUN go build -v -o /protector cmd/protector/*.go
+RUN go build -v -o /guard-rproxy cmd/guard-rproxy/*.go
 
 
 ##
@@ -22,10 +22,10 @@ FROM gcr.io/distroless/base-debian10
 
 WORKDIR /
 
-COPY --from=build /protector /protector
+COPY --from=build /guard-rproxy /guard-rproxy
 
 EXPOSE 22000
 
 USER nonroot:nonroot
 
-ENTRYPOINT ["/protector"]
+ENTRYPOINT ["/guard-rproxy"]
