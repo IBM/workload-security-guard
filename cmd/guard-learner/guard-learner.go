@@ -229,7 +229,6 @@ func (l *learner) storeSession(ns string, sid string, wsgate *spec.GuardianSpec)
 }
 
 func (l *learner) loadSession(ns string, sid string, cmname bool) *serviceRecord {
-	fmt.Printf("loadSession %s.%s (cm %t)\n", ns, sid, cmname)
 	service := sid + "." + ns
 	record, exists := l.services[service]
 	if exists {
@@ -238,7 +237,6 @@ func (l *learner) loadSession(ns string, sid string, cmname bool) *serviceRecord
 
 	// not cached
 	gate := l.kmgr.FetchConfig(ns, sid, cmname)
-	fmt.Printf("FetchedConfig gate.Control %v\n", gate.Control)
 	l.storeSession(ns, sid, gate)
 	return l.services[service]
 }
@@ -249,7 +247,6 @@ func (l *learner) deleteSession(ns string, sid string) {
 }
 
 func (l *learner) set(ns string, sid string, g *spec.GuardianSpec) {
-	fmt.Printf("set g.Control %v\n", g.Control)
 	if g == nil {
 		l.deleteSession(ns, sid)
 	} else {
@@ -511,18 +508,18 @@ func main() {
 	l.kmgr.InitConfigs()
 	//getGuardianClient()
 	//setConfigMap()
-	data := new(spec.GuardianSpec)
-	data.Control = new(spec.Ctrl)
-	data.Control.Consult = true
-	data.Control.RequestsPerMinuete = 60
-	data.Control.Block = false
-	data.Configured = new(spec.Criteria)
-	data.Configured.Req.AddTypicalVal()
-	l.kmgr.SetCrd("default", "mytestservice", data)
-	fmt.Printf("Starting server on port 8888\n")
+	//data := new(spec.GuardianSpec)
+	//data.Control = new(spec.Ctrl)
+	//data.Control.Consult = true
+	//data.Control.RequestsPerMinuete = 60
+	//data.Control.Block = false
+	//data.Configured = new(spec.Criteria)
+	//data.Configured.Req.AddTypicalVal()
+	//l.kmgr.SetCrd("default", "mytestservice", data)
+	fmt.Printf("Starting guard-learner on port 80\n")
 	http.HandleFunc("/config", l.fetchConfig)
 	http.HandleFunc("/req", l.consultOnReq)
 	http.HandleFunc("/pile", l.processPile)
-	err := http.ListenAndServe(":8888", nil)
+	err := http.ListenAndServe(":80", nil)
 	fmt.Printf("Failed to start %v\n", err)
 }
