@@ -46,13 +46,17 @@ type StructuredPile struct {
 
 func (config *StructuredConfig) Learn(p *StructuredPile) {
 	//??? config.Kind.Learn(p.)
-	config.Val.Learn(p.Val)
+	//fmt.Printf("Learn config %v\n", config)
+	//fmt.Printf("Learn config.Val %v\n", config.Val)
+	//fmt.Printf("Learn p %v\n", p)
+	//fmt.Printf("Learn p.Val %v\n", p.Val)
+	//config.Val.Learn(p.Val)
 	//config.Kv.Lean(p.Kv)
 }
 
 func (config *StructuredConfig) Merge(m *StructuredConfig) {
 	//??? config.Kind.Learn(p.)
-	config.Val.Merge(m.Val)
+	//config.Val.Merge(m.Val)
 	//config.Kv.Merge(m.Kv)
 }
 

@@ -18,17 +18,18 @@ type BodyPile struct {
 }
 
 func (config *BodyConfig) Reconcile() {
-
+	config.Structured = new(StructuredConfig)
+	config.Unstructured = new(SimpleValConfig)
 }
 
 func (config *BodyConfig) Learn(p *BodyPile) {
-	config.Structured.Learn(p.Structured)
-	config.Unstructured.Learn(p.Unstructured)
+	//config.Structured.Learn(p.Structured)
+	//config.Unstructured.Learn(p.Unstructured)
 }
 
 func (config *BodyConfig) Merge(m *BodyConfig) {
-	config.Structured.Merge(m.Structured)
-	config.Unstructured.Merge(m.Unstructured)
+	//config.Structured.Merge(m.Structured)
+	//config.Unstructured.Merge(m.Unstructured)
 }
 
 func (p *BodyPile) Clear() {
@@ -37,8 +38,8 @@ func (p *BodyPile) Clear() {
 }
 
 func (p *BodyPile) Append(a *BodyPile) {
-	p.Structured.Append(a.Structured)
-	p.Unstructured.Append(a.Unstructured)
+	//p.Structured.Append(a.Structured)
+	//p.Unstructured.Append(a.Unstructured)
 }
 
 func (config *BodyConfig) Decide(bp *BodyProfile) string {
