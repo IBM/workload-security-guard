@@ -43,8 +43,8 @@ func (p *GuardGate) RoundTrip(req *http.Request) (resp *http.Response, err error
 		}
 	}()
 
-	fmt.Printf("BaseRoundTrip req.Host %s\n", req.Host)
-	fmt.Printf("BaseRoundTrip req.URL.Host %s\n", req.URL.Host)
+	//fmt.Printf("BaseRoundTrip req.Host %s\n", req.Host)
+	//fmt.Printf("BaseRoundTrip req.URL.Host %s\n", req.URL.Host)
 
 	req.Host = "" // req.URL.Host
 
@@ -128,6 +128,7 @@ func main() {
 		env.GuardUrl = "http://guard-service.knative-guard"
 	}
 	plugConfig["guard-url"] = env.GuardUrl
+	plugConfig["report-pile-interval"] = "15s"
 
 	if env.UseConfigmap {
 		plugConfig["use-configmap"] = "true"

@@ -31,7 +31,7 @@ const plugName string = "guard"
 
 const (
 	GuardianLoadIntervalDefault = 5 * time.Minute
-	ReportPileIntervalDefault   = 10 * time.Minute
+	ReportPileIntervalDefault   = 4 * time.Second
 	PodMonitorIntervalDefault   = 5 * time.Second
 	MinimumInterval             = 5 * time.Second
 )
