@@ -15,6 +15,7 @@ require (
 	github.com/IBM/go-security-plugs v1.3.19
 	github.com/gorilla/mux v1.8.0
 	github.com/kelseyhightower/envconfig v1.4.0
+	knative.dev/pkg v0.0.0-20220722175921-6c9c1c6098d5
 	knative.dev/serving v0.33.1-0.20220725225524-63523f9d0e97
 
 )
@@ -80,7 +81,6 @@ require (
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	knative.dev/control-protocol v0.0.0-20220711013913-b5a214695a24 // indirect
 	knative.dev/networking v0.0.0-20220723000421-cddb0ff95789 // indirect
-	knative.dev/pkg v0.0.0-20220722175921-6c9c1c6098d5 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect

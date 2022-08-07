@@ -595,7 +595,7 @@ func (p *plug) securityMonitor(ctx context.Context, sp *spec.SessionProfile) boo
 }
 
 func (p *plug) Alert(alert string) {
-	pi.Log.Infof("SECURITY ALERT! %s", alert)
+	pi.Log.Warnf("SECURITY ALERT! %s", alert)
 }
 
 func (p *plug) ApproveResponse(req *http.Request, resp *http.Response) (*http.Response, error) {

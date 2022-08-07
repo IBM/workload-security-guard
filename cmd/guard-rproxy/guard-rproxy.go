@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 
 	pi "github.com/IBM/go-security-plugs/pluginterfaces"
 	_ "github.com/IBM/workload-security-guard/pkg/guardgate"
+	"knative.dev/pkg/signals"
 
 	"github.com/kelseyhightower/envconfig"
 	"go.uber.org/zap"
@@ -84,9 +84,10 @@ func getLogLevel(level string) zapcore.Level {
 
 func createLogger(logLevel string) *zap.SugaredLogger {
 	rawJSON := []byte(`{
-		"level": "debug",
+		"level": "info",
 		"encoding": "json",
 		"outputPaths": ["stdout"],
+		"development": false,
 		"errorOutputPaths": ["stderr"],
 		"encoderConfig": {
 		  "messageKey": "message",
@@ -120,6 +121,7 @@ func main() {
 
 	log := createLogger(env.LogLevel)
 	defer log.Sync()
+	pi.Log = log
 
 	if env.GuardUrl == "" {
 		// use default
@@ -132,7 +134,6 @@ func main() {
 	}
 
 	plugConfig["monitor-pod"] = "false"
-	plugConfig["report-pile-interval"] = "15s"
 
 	log.Infof("guard-proxy serving serviceName: %s, namespace: %s, serviceUrl: %s", env.ServiceName, env.Namespace, env.ServiceUrl)
 	parsedUrl, err := url.Parse(env.ServiceUrl)
@@ -144,7 +145,7 @@ func main() {
 	// Hook using RoundTripper
 
 	securityPlug := pi.RoundTripPlugs[0]
-	securityPlug.Init(context.Background(), plugConfig, env.ServiceName, env.Namespace, log)
+	securityPlug.Init(signals.NewContext(), plugConfig, env.ServiceName, env.Namespace, log)
 	defer securityPlug.Shutdown()
 
 	var gateGaurd GuardGate
