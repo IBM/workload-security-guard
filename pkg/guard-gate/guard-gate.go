@@ -17,7 +17,7 @@ import (
 	"time"
 
 	spec "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1"
-	"github.com/IBM/workload-security-guard/pkg/guardkubemgr"
+	guardkubemgr "github.com/IBM/workload-security-guard/pkg/guard-kubemgr"
 
 	"github.com/IBM/go-security-plugs/iodup"
 	"github.com/IBM/go-security-plugs/iofilter"
@@ -45,7 +45,6 @@ type plug struct {
 	version     string
 	serviceName string
 	namespace   string
-	config      map[string]string
 	ctx         context.Context
 
 	kubemgr guardkubemgr.Kubemgr
@@ -801,21 +800,33 @@ func (p *plug) Init(ctx context.Context, c map[string]string, serviceName string
 	p.ctx = ctx
 	p.serviceName = serviceName
 	p.namespace = namespace
-	p.config = c
 
-	if p.guardUrl, ok = c["guard-url"]; !ok {
-		// use default
-		p.guardUrl = "http://guard-service.knative-guard"
-	}
+	p.guardUrl = "http://guard-service.knative-guard"
+	p.useConfigmap = true
+	p.monitorPod = true
+	p.GuardianLoadInterval = GuardianLoadIntervalDefault
+	p.ReportPileInterval = ReportPileIntervalDefault
+	p.PodMonitorInterval = PodMonitorIntervalDefault
 
-	v, ok = c["use-configmap"]
-	if ok && strings.EqualFold(v, "true") {
-		p.useConfigmap = true
-	}
+	if c != nil {
+		if v, ok = c["guard-url"]; ok && v != "" {
+			// use default
+			p.guardUrl = v
+		}
 
-	v, ok = c["monitor-pod"]
-	if ok && strings.EqualFold(v, "true") {
-		p.monitorPod = true
+		if v, ok = c["use-configmap"]; ok && strings.EqualFold(v, "true") {
+			p.useConfigmap = true
+		}
+
+		if v, ok = c["monitor-pod"]; ok && !strings.EqualFold(v, "true") {
+			p.monitorPod = false
+		}
+		p.GuardianLoadInterval = parseInterval("GuardianLoad", c["guardian-load-interval"], GuardianLoadIntervalDefault)
+		p.ReportPileInterval = parseInterval("ReportPile", c["report-pile-interval"], ReportPileIntervalDefault)
+		p.PodMonitorInterval = parseInterval("PodMonitor", c["pod-monitor-interval"], PodMonitorIntervalDefault)
+
+		pi.Log.Debugf("guardgate configuration: servicename=%s, namespace=%s, cmname=%t, guardUrl=%s, p.monitorPod=%t, guardian-load-interval %v, report-pile-interval %v, pod-monitor-interval %v",
+			p.serviceName, p.namespace, p.useConfigmap, p.guardUrl, p.monitorPod, c["guardian-load-interval"], c["report-pile-interval"], c["pod-monitor-interval"])
 	}
 
 	// svcname should never be "ns.{namespace}" as this is a reserved name
@@ -824,17 +835,10 @@ func (p *plug) Init(ctx context.Context, c map[string]string, serviceName string
 		panic("Ilegal Svcname - ns.{Namespace} is reserved")
 	}
 
-	pi.Log.Debugf("guardgate configuration: servicename=%s, namespace=%s, cmname=%t, guardUrl=%s, p.monitorPod=%t, guardian-load-interval %v, report-pile-interval %v, pod-monitor-interval %v",
-		p.serviceName, p.namespace, p.useConfigmap, p.guardUrl, p.monitorPod, c["guardian-load-interval"], c["report-pile-interval"], c["pod-monitor-interval"])
-
 	p.clearPile()
 	p.statistics = make(map[string]uint32, 8)
 
 	p.kubemgr.InitConfigs()
-
-	p.GuardianLoadInterval = parseInterval("GuardianLoad", c["guardian-load-interval"], GuardianLoadIntervalDefault)
-	p.ReportPileInterval = parseInterval("ReportPile", c["report-pile-interval"], ReportPileIntervalDefault)
-	p.PodMonitorInterval = parseInterval("PodMonitor", c["pod-monitor-interval"], PodMonitorIntervalDefault)
 
 	p.loadGuardian()
 	p.decidePod()

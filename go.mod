@@ -5,19 +5,18 @@ go 1.18
 require (
 	github.com/google/uuid v1.3.0
 	go.uber.org/zap v1.19.1
-	k8s.io/api v0.23.8
-	k8s.io/apimachinery v0.23.8
-	k8s.io/client-go v0.23.8
-	k8s.io/klog/v2 v2.60.1-0.20220317184644-43cc75f9ae89
+	k8s.io/api v0.23.9
+	k8s.io/apimachinery v0.23.9
+	k8s.io/client-go v0.23.9
+	k8s.io/klog/v2 v2.70.2-0.20220707122935-0990e81f1a8f
 )
 
 require (
 	github.com/IBM/go-security-plugs v1.3.19
 	github.com/gorilla/mux v1.8.0
 	github.com/kelseyhightower/envconfig v1.4.0
-	knative.dev/pkg v0.0.0-20220722175921-6c9c1c6098d5
-	knative.dev/serving v0.33.1-0.20220725225524-63523f9d0e97
-
+	knative.dev/pkg v0.0.0-20220805012121-7b8b06028e4f
+	knative.dev/serving v0.33.1-0.20220805183022-16730b2596a7
 )
 
 require (
@@ -79,12 +78,10 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
-	knative.dev/control-protocol v0.0.0-20220711013913-b5a214695a24 // indirect
-	knative.dev/networking v0.0.0-20220723000421-cddb0ff95789 // indirect
+	knative.dev/control-protocol v0.0.0-20220728062837-75cf857da76a // indirect
+	knative.dev/networking v0.0.0-20220803115018-d2c739da1c1b // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-// replace github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.5.5
-//replace github.com/IBM/go-security-plugs => ../go-security-plugs

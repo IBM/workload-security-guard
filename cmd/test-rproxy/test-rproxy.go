@@ -11,7 +11,7 @@ import (
 	"runtime/debug"
 
 	pi "github.com/IBM/go-security-plugs/pluginterfaces"
-	_ "github.com/IBM/workload-security-guard/pkg/guard-gate"
+	_ "github.com/IBM/workload-security-guard/pkg/test-gate"
 	"knative.dev/pkg/signals"
 
 	"github.com/kelseyhightower/envconfig"
@@ -20,12 +20,12 @@ import (
 )
 
 type config struct {
-	ServiceName  string `split_words:"true" required:"true"`
-	Namespace    string `split_words:"true" required:"true"`
-	ServiceUrl   string `split_words:"true" required:"true"`
-	GuardUrl     string `split_words:"true" required:"false"`
-	UseConfigmap bool   `split_words:"true" required:"false"`
-	LogLevel     string `split_words:"true" required:"false"`
+	Sender      string `split_words:"true" required:"false"`
+	Response    string `split_words:"true" required:"false"`
+	ServiceName string `split_words:"true" required:"true"`
+	Namespace   string `split_words:"true" required:"true"`
+	ServiceUrl  string `split_words:"true" required:"true"`
+	LogLevel    string `split_words:"true" required:"false"`
 }
 
 type GuardGate struct {
@@ -114,23 +114,12 @@ func main() {
 	}
 
 	plugConfig := make(map[string]string)
+	plugConfig["response"] = env.Response
+	plugConfig["sender"] = env.Sender
 
 	log := createLogger(env.LogLevel)
 	defer log.Sync()
 	pi.Log = log
-
-	if env.GuardUrl == "" {
-		// use default
-		env.GuardUrl = "http://guard-service.knative-guard"
-	}
-	plugConfig["guard-url"] = env.GuardUrl
-	plugConfig["report-pile-interval"] = "15s"
-
-	if env.UseConfigmap {
-		plugConfig["use-configmap"] = "true"
-	}
-
-	plugConfig["monitor-pod"] = "false"
 
 	log.Infof("guard-proxy serving serviceName: %s, namespace: %s, serviceUrl: %s", env.ServiceName, env.Namespace, env.ServiceUrl)
 	parsedUrl, err := url.Parse(env.ServiceUrl)
@@ -150,7 +139,7 @@ func main() {
 	proxy.Transport = gateGaurd.Transport(proxy.Transport)
 
 	http.Handle("/", proxy)
-	log.Infof("Creating Reverse Proxy on port 22000")
-	err = http.ListenAndServe(":22000", nil)
+	log.Infof("Creating Reverse Proxy on port 8081")
+	err = http.ListenAndServe(":8081", nil)
 	log.Fatalf("Failed to open http local service: %s", err.Error())
 }

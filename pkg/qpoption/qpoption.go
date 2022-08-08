@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
+	"knative.dev/serving/pkg/queue"
 	"knative.dev/serving/pkg/queue/sharedmain"
 
 	pi "github.com/IBM/go-security-plugs/pluginterfaces"
@@ -17,9 +18,12 @@ import (
 
 // This is a Knative Queue Proxy Option (QPOption) package to manage the life cycle and configrue
 // a single security plug.
-// It can be extended in teh future to managing multiple securiity plugs by combining code now in rtplugs
+// It can be extended in the future to managing multiple securiity plugs by using the rtplugs package
 
-type GuardGateQPOption struct {
+var annotationsFilePath = queue.PodInfoVolumeMountPath + "/" + queue.PodInfoAnnotationsFilename
+var qpextentionPreifx = "qpextention.knative.dev/"
+
+type GateQPOption struct {
 	config           map[string]string
 	activated        bool
 	defaults         *sharedmain.Defaults
@@ -27,11 +31,11 @@ type GuardGateQPOption struct {
 	nextRoundTripper http.RoundTripper // the next roundtripper
 }
 
-func NewGuardGateQPOption() *GuardGateQPOption {
-	return new(GuardGateQPOption)
+func NewGateQPOption() *GateQPOption {
+	return new(GateQPOption)
 }
 
-func (p *GuardGateQPOption) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+func (p *GateQPOption) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			pi.Log.Warnf("Recovered from panic during RoundTrip! Recover: %v\n", recovered)
@@ -42,6 +46,8 @@ func (p *GuardGateQPOption) RoundTrip(req *http.Request) (resp *http.Response, e
 	}()
 
 	if req, err = p.securityPlug.ApproveRequest(req); err == nil {
+		pi.Log.Infof("p %v", p)
+		pi.Log.Infof("p.nextRoundTripper %v", p.nextRoundTripper)
 		if resp, err = p.nextRoundTripper.RoundTrip(req); err == nil {
 			resp, err = p.securityPlug.ApproveResponse(req, resp)
 		}
@@ -53,19 +59,15 @@ func (p *GuardGateQPOption) RoundTrip(req *http.Request) (resp *http.Response, e
 	return
 }
 
-func (p *GuardGateQPOption) ProcessAnnotations() {
-	file, err := os.Open("/etc/podinfo/annotations")
+func (p *GateQPOption) ProcessAnnotations(annotationsPath string, qpextentionPreifx string) bool {
+	file, err := os.Open(annotationsPath)
 	if err != nil {
-		p.defaults.Logger.Debugf("Cant find /etc/podinfo/annotations. Apperently podInfo is not mounted. os.Open Error %s", err.Error())
-		return
+		p.defaults.Logger.Debugf("Cant find %s. Apperently podInfo is not mounted. os.Open Error %s", annotationsPath, err.Error())
+		return false
 	}
 	defer file.Close()
 	p.config = make(map[string]string)
 
-	// set defualts
-	p.config["monitor-pod"] = "true"
-
-	qpextentionPreifx := "qpextention.knative.dev/"
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		txt := scanner.Text()
@@ -100,11 +102,12 @@ func (p *GuardGateQPOption) ProcessAnnotations() {
 	}
 	if err := scanner.Err(); err != nil {
 		p.defaults.Logger.Infof("Scanner Error %s", err.Error())
-		return
+		return false
 	}
+	return true
 }
 
-func (p *GuardGateQPOption) Setup(defaults *sharedmain.Defaults) {
+func (p *GateQPOption) Setup(defaults *sharedmain.Defaults) {
 	// Never panic the caller app from here
 	defer func() {
 		if r := recover(); r != nil {
@@ -112,6 +115,11 @@ func (p *GuardGateQPOption) Setup(defaults *sharedmain.Defaults) {
 		}
 	}()
 
+	if (pi.RoundTripPlugs == nil) || len(pi.RoundTripPlugs) != 1 {
+		pi.Log.Infof("Option without a Plug, Or with more than one Plug - Skip Option")
+		return
+	}
+	p.securityPlug = pi.RoundTripPlugs[0]
 	p.defaults = defaults
 	namespace := defaults.Env.ServingNamespace
 	servicName := defaults.Env.ServingService
@@ -127,13 +135,11 @@ func (p *GuardGateQPOption) Setup(defaults *sharedmain.Defaults) {
 	pi.Log = defaults.Logger
 
 	// build p.config
-	p.ProcessAnnotations()
-	if !p.activated {
-		defaults.Logger.Debugf("%s is not activated", p.securityPlug.PlugName())
+
+	if !p.ProcessAnnotations(annotationsFilePath, qpextentionPreifx) || !p.activated {
+		pi.Log.Debugf("%s is not activated", p.securityPlug.PlugName())
 		return
 	}
-
-	p.securityPlug = pi.RoundTripPlugs[0]
 
 	pi.Log.Debugf("Activating %s version %s with config %v in pod %s namespace %s", p.securityPlug.PlugName(), p.securityPlug.PlugVersion(), p.config, servicName, namespace)
 
@@ -153,7 +159,7 @@ func (p *GuardGateQPOption) Setup(defaults *sharedmain.Defaults) {
 	defaults.Transport = p
 }
 
-func (p *GuardGateQPOption) Shutdown() {
+func (p *GateQPOption) Shutdown() {
 	defer func() {
 		if r := recover(); r != nil {
 			pi.Log.Warnf("Recovered from panic during Shutdown! Recover: %v", r)

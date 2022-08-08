@@ -10,7 +10,7 @@ import (
 	//"unicode"
 
 	"github.com/IBM/go-security-plugs/rtplugs"
-	_ "github.com/IBM/workload-security-guard/pkg/guardgate"
+	_ "github.com/IBM/workload-security-guard/pkg/test-gate"
 	"go.uber.org/zap"
 )
 

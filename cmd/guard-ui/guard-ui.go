@@ -12,7 +12,7 @@ import (
 	"github.com/gorilla/mux"
 
 	spec "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1"
-	"github.com/IBM/workload-security-guard/pkg/guardkubemgr"
+	guardkubemgr "github.com/IBM/workload-security-guard/pkg/guard-kubemgr"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
