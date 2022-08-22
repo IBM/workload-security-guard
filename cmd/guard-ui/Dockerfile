@@ -43,7 +43,7 @@ RUN ibmcloud plugin install observe-service -f
 RUN ibmcloud plugin install code-engine -f
 RUN ibmcloud config --check-version=false
 
-COPY --from=build /guard-ui /guard-ui
+COPY --from=build /guard-ui /usr/local/bin/guard-ui
 COPY --from=fe /build /frontend/build
 
 EXPOSE 9000
