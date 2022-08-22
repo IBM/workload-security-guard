@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	spec "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1"
-	guardkubemgr "github.com/IBM/workload-security-guard/pkg/guard-kubemgr"
+	spec "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1alpha1"
+	guardKubeMgr "github.com/IBM/workload-security-guard/pkg/guard-kubemgr"
 
 	"github.com/IBM/go-security-plugs/iodup"
 	"github.com/IBM/go-security-plugs/iofilter"
@@ -36,7 +36,7 @@ const (
 	MinimumInterval             = 5 * time.Second
 )
 
-var errSecurity error = errors.New("secuirty blocked by guard")
+var errSecurity error = errors.New("security blocked by guard")
 
 type ctxKey string
 
@@ -47,29 +47,38 @@ type plug struct {
 	namespace   string
 	ctx         context.Context
 
-	kubemgr guardkubemgr.Kubemgr
+	kubeMgr guardKubeMgr.KubeMgr
 
 	// Add here any other state the extension needs
 	guardUrl             string
 	useConfigmap         bool
 	monitorPod           bool
 	wsGate               *spec.GuardianSpec
-	criteria             *spec.Criteria
+	criteria             *spec.SessionDataConfig
 	GuardianLoadInterval time.Duration
 	ReportPileInterval   time.Duration
 	PodMonitorInterval   time.Duration
-	httpc                http.Client
-	pile                 spec.Pile
+	httpClient           http.Client
+	pile                 spec.SessionDataPile
 	pileCount            int
 	statistics           map[string]uint32
 	pod                  spec.PodProfile
 	alert                string
 }
 
+type SessionProfile struct {
+	GotResponse           bool
+	Alert                 string
+	Cancel                context.CancelFunc
+	SecurityMonitorTicker *time.Ticker
+	ReqTime               time.Time
+	Data                  spec.SessionDataProfile
+}
+
 func GetMD5Hash(text string) string {
-	hasher := md5.New()
-	hasher.Write([]byte(text))
-	return hex.EncodeToString(hasher.Sum(nil))[0:16]
+	hash := md5.New()
+	hash.Write([]byte(text))
+	return hex.EncodeToString(hash.Sum(nil))[0:16]
 }
 
 func (p *plug) Shutdown() {
@@ -107,14 +116,14 @@ func (p *plug) screenRequestBody(req *http.Request, bp *spec.BodyProfile) string
 
 	if req.ContentLength < maxBody {
 		// TBD - validate content-type params returned by ParseMediaType!
-		ctype, _, err := mime.ParseMediaType(req.Header.Get("Content-Type"))
+		cType, _, err := mime.ParseMediaType(req.Header.Get("Content-Type"))
 		if err != nil {
-			ctype = "application/octet-stream"
+			cType = "application/octet-stream"
 		}
 		method := req.Method
-		//pi.Log.Debugf("%s Request Content-Type: %s  (params %v)\n", p.name, ctype, params)
+		//pi.Log.Debugf("%s Request Content-Type: %s  (params %v)\n", p.name, cType, params)
 		//pi.Log.Debugf("%s Request Method: %s\n", p.name, method)
-		if ctype == "application/json" {
+		if cType == "application/json" {
 			//pi.Log.Debugf("Processing json!\n")
 			doneBody = true
 			dup := iodup.New(req.Body, 2, 128, 8192)
@@ -131,7 +140,7 @@ func (p *plug) screenRequestBody(req *http.Request, bp *spec.BodyProfile) string
 
 		} else if method == "POST" || method == "PUT" || method == "PATCH" {
 			//pi.Log.Debugf("Processing POST/PUT/PATCH\n")
-			if ctype == "application/x-www-form-urlencoded" {
+			if cType == "application/x-www-form-urlencoded" {
 				//pi.Log.Debugf("Processing application/x-www-form-urlencoded!\n")
 				doneBody = true
 				// Option A
@@ -149,8 +158,10 @@ func (p *plug) screenRequestBody(req *http.Request, bp *spec.BodyProfile) string
 				//pi.Log.Debugf("Form Data %s\n", req.Form)
 
 				bp.Structured = new(spec.StructuredProfile)
-				bp.Structured.ProfilePostForm(req.PostForm)
-				//s := bp.Structured.Marshal(0)
+				//bp.Structured.ProfilePostForm(req.PostForm)
+				bp.Structured.Profile(req.PostForm)
+
+				//s := bp.Structured.String(0)
 				//pi.Log.Debugf("--> %d %s\n", len(s), s)
 				//pi.Log.Debugf("JsonProfile: %s\n", s)
 				// option 2
@@ -164,7 +175,7 @@ func (p *plug) screenRequestBody(req *http.Request, bp *spec.BodyProfile) string
 				// reset orig request
 				//req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 				req.Body = &dup.Output[0]
-			} else if ctype == "multipart/form-data" {
+			} else if cType == "multipart/form-data" {
 				//pi.Log.Debugf("Processing multipart/form-data!\n")
 				doneBody = true
 
@@ -183,8 +194,10 @@ func (p *plug) screenRequestBody(req *http.Request, bp *spec.BodyProfile) string
 				//pi.Log.Debugf("Form Data %s\n", req.Form)
 
 				bp.Structured = new(spec.StructuredProfile)
-				bp.Structured.ProfilePostForm(req.PostForm)
-				//s := bp.Structured.Marshal(0)
+				//bp.Structured.ProfilePostForm(req.PostForm)
+				bp.Structured.Profile(req.PostForm)
+
+				//s := bp.Structured.String(0)
 				//pi.Log.Debugf("--> %d %s\n", len(s), s)
 				//pi.Log.Debugf("JsonProfile: %s\n", s)
 				// option 2
@@ -203,30 +216,30 @@ func (p *plug) screenRequestBody(req *http.Request, bp *spec.BodyProfile) string
 		if !doneBody && testBodyHist {
 			pi.Log.Debugf("Analyzing Body")
 
-			// Asynchrniously stream bytes from the original resp.Body
+			// Asynchronously stream bytes from the original resp.Body
 			// to a new resp.Body
 			//req.Body = iofilter.New(req.Body, requestFilter, sp.ReqBody)
 		}
 	}
 
 	if (p.criteria != nil) && p.criteria.Active {
-		if decission := p.criteria.ReqBody.Decide(bp); decission != "" {
+		if decision := p.criteria.ReqBody.Decide(bp); decision != "" {
 			p.stats("ReqBodyNok")
-			return fmt.Sprintf("HttpRequestBody: %s", decission)
+			return fmt.Sprintf("HttpRequestBody: %s", decision)
 		}
 	}
 	p.stats("ReqBodyOk")
 	return ""
 }
 
-func (p *plug) screenEnvelop(sp *spec.SessionProfile) string {
+func (p *plug) screenEnvelop(sp *SessionProfile) string {
 	now := time.Now()
-	sp.Envelop.Profile(sp.ReqTime, now, now)
+	sp.Data.Envelop.Profile(sp.ReqTime, now, now)
 
 	if (p.criteria != nil) && p.criteria.Active {
-		if decission := p.criteria.Envelop.Decide(&sp.Envelop); decission != "" {
+		if decision := p.criteria.Envelop.Decide(&sp.Data.Envelop); decision != "" {
 			p.stats("EnvelopNok")
-			return fmt.Sprintf("Envelop: %s", decission)
+			return fmt.Sprintf("Envelop: %s", decision)
 		}
 	}
 	p.stats("EnvelopOk")
@@ -234,22 +247,20 @@ func (p *plug) screenEnvelop(sp *spec.SessionProfile) string {
 }
 
 func (p *plug) screenRequest(req *http.Request, rp *spec.ReqProfile) string {
-	var decission string
+	var decision string
 
 	//pi.Log.Debugf("screenRequest: ctrl %v", p.wsGate.Control)
 	p.stats("Total")
 	// Request client and server identities
 	cip, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
-		decission += fmt.Sprintf("illegal req.RemoteAddr %s", err.Error())
+		decision += fmt.Sprintf("illegal req.RemoteAddr %s", err.Error())
 	}
 	_, _, err = net.SplitHostPort(req.URL.Host)
 
 	if err != nil {
-		decission += fmt.Sprintf("illegal req.URL.Host %s", err.Error())
+		decision += fmt.Sprintf("illegal req.URL.Host %s", err.Error())
 	}
-	//pi.Log.Debugf("Client: %s port %s", cip, cport)
-	//pi.Log.Debugf("Server: %s port %s", sip, sport)
 
 	// Request principles
 	//pi.Log.Debugf("req.Method %s", req.Method)
@@ -266,29 +277,29 @@ func (p *plug) screenRequest(req *http.Request, rp *spec.ReqProfile) string {
 	rp.Profile(req, ip)
 
 	if (p.criteria != nil) && p.criteria.Active {
-		if decission := p.criteria.Req.Decide(rp); decission != "" {
+		if decision := p.criteria.Req.Decide(rp); decision != "" {
 			p.stats("ReqNok")
-			return fmt.Sprintf("HttpRequest: %s", decission)
+			return fmt.Sprintf("HttpRequest: %s", decision)
 		}
 	}
 
 	p.stats("ReqOk")
 	return ""
 	/*
-		if decission != "" {
+		if decision != "" {
 			// potentially consult guard before rejecting
-			pi.Log.Infof("Guardian refused to allow: %s", decission)
+			pi.Log.Infof("Guardian refused to allow: %s", decision)
 			if ctrl.Consult {
-				minuete := time.Now().Truncate(time.Minute)
-				if p.lastConsultReported != minuete {
-					p.lastConsultReported = minuete
+				minute := time.Now().Truncate(time.Minute)
+				if p.lastConsultReported != minute {
+					p.lastConsultReported = minute
 					p.numConsultsCount = 0
 				}
-				if p.numConsultsCount < ctrl.RequestsPerMinuete {
+				if p.numConsultsCount < ctrl.RequestsPerMinute {
 					p.numConsultsCount = p.numConsultsCount + 1
-					pi.Log.Infof("Consulting Guard %d/%d", p.numConsultsCount, ctrl.RequestsPerMinuete)
-					decission = p.consultOnRequest(rp)
-					//pi.Log.Infof("Guard said: %s", decission)
+					pi.Log.Infof("Consulting Guard %d/%d", p.numConsultsCount, ctrl.RequestsPerMinute)
+					decision = p.consultOnRequest(rp)
+					//pi.Log.Infof("Guard said: %s", decision)
 				}
 			}
 		}
@@ -382,7 +393,7 @@ func (p *plug) screenRequest(req *http.Request, rp *spec.ReqProfile) string {
 		roundedMarkers.append(fingerprints, d.getHours()/23)
 		console.log(roundedMarkers)
 
-		console.log(httpreq.body)
+		console.log(httpReq.body)
 		console.log(otherHeaderVals)
 		console.log(queryContent)
 
@@ -412,7 +423,7 @@ func (p *plug) screenRequest(req *http.Request, rp *spec.ReqProfile) string {
 
 
 
-		const dataout = JSON.stringify({
+		const dataOut = JSON.stringify({
 					gateId:   gate
 				, serviceId: unit
 				, triggerInstance: triggerInstance
@@ -425,8 +436,8 @@ func (p *plug) screenRequest(req *http.Request, rp *spec.ReqProfile) string {
 				}
 			});
 
-		console.log(unit, dataout);
-		postRequest("Path: "+fingerprint_path, "/eval", dataout, callback)
+		console.log(unit, dataOut);
+		postRequest("Path: "+fingerprint_path, "/eval", dataOut, callback)
 	*/
 }
 
@@ -434,9 +445,9 @@ func (p *plug) screenResponse(resp *http.Response, rp *spec.RespProfile) string 
 	rp.Profile(resp)
 
 	if (p.criteria != nil) && p.criteria.Active {
-		if decission := p.criteria.Resp.Decide(rp); decission != "" {
+		if decision := p.criteria.Resp.Decide(rp); decision != "" {
 			p.stats("RespNok")
-			return fmt.Sprintf("HttpResponse: %s", decission)
+			return fmt.Sprintf("HttpResponse: %s", decision)
 		}
 	}
 
@@ -457,7 +468,7 @@ func responseFilter(buf []byte, state interface{}) {
 			h[0]++
 		case c >= 127 || c <= 31: // All non ascii unicodes, ascii 0-31, <DEL>
 			h[1]++
-		case c == 34 || c == 96 || c == 39: // ascii quatations  - TBD IF NEED TO BE extended with other suspects
+		case c == 34 || c == 96 || c == 39: // ascii quotations  - TBD IF NEED TO BE extended with other suspects
 			h[2]++
 		case c == 59: // ; - TBD IF NEED TO BE extended with other suspects
 			h[3]++
@@ -485,7 +496,7 @@ func requestFilter(buf []byte, state interface{}) {
 			h[0]++
 		case c >= 127 || c <= 31: // All non ascii unicodes, ascii 0-31, <DEL>
 			h[1]++
-		case c == 34 || c == 96 || c == 39: // ascii quatations  - TBD IF NEED TO BE extended with other suspects
+		case c == 34 || c == 96 || c == 39: // ascii quotations  - TBD IF NEED TO BE extended with other suspects
 			h[2]++
 		case c == 59: // ; - TBD IF NEED TO BE extended with other suspects
 			h[3]++
@@ -501,13 +512,13 @@ func requestFilter(buf []byte, state interface{}) {
 func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 	//pi.Log.Debugf("%s: ApproveRequest started", p.name)
 
-	sp := new(spec.SessionProfile)
+	sp := new(SessionProfile)
 	sp.ReqTime = time.Now()
 
 	// Req
 	sp.Alert += p.screenEnvelop(sp)
-	sp.Alert += p.screenRequest(req, &sp.Req)
-	sp.Alert += p.screenRequestBody(req, &sp.ReqBody)
+	sp.Alert += p.screenRequest(req, &sp.Data.Req)
+	sp.Alert += p.screenRequestBody(req, &sp.Data.ReqBody)
 	if (sp.Alert != "" || p.alert != "") && p.wsGate.Control.Block {
 		p.stats("BlockOnRequest")
 		sp.Cancel()
@@ -522,14 +533,14 @@ func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 	req = req.WithContext(ctx)
 
 	//goroutine to accompany the request
-	go func(ctx context.Context, sp *spec.SessionProfile) {
+	go func(ctx context.Context, sp *SessionProfile) {
 		sp.SecurityMonitorTicker = time.NewTicker(p.PodMonitorInterval)
 		done := false
 		for !done {
 			done = p.securityMonitor(ctx, sp)
 			if !done {
 				sp.SecurityMonitorTicker.Stop()
-				pi.Log.Debugf("Making a second attampt at securityMonitor")
+				pi.Log.Debugf("Making a second attempt at securityMonitor")
 				p.securityMonitor(ctx, sp)
 				done = true
 			}
@@ -538,7 +549,7 @@ func (p *plug) ApproveRequest(req *http.Request) (*http.Request, error) {
 	return req, nil
 }
 
-func (p *plug) securityMonitor(ctx context.Context, sp *spec.SessionProfile) bool {
+func (p *plug) securityMonitor(ctx context.Context, sp *SessionProfile) bool {
 	defer func() {
 		if r := recover(); r != nil {
 			pi.Log.Warnf("securityMonitor Recovered %s", r)
@@ -551,12 +562,13 @@ func (p *plug) securityMonitor(ctx context.Context, sp *spec.SessionProfile) boo
 			sp.SecurityMonitorTicker.Stop()
 
 			// Should we learn?
-			if p.wsGate.Control.Learn && (sp.Alert == "" || p.wsGate.Control.Force) && sp.Resp.Headers != nil {
+			if p.wsGate.Control.Learn && (sp.Alert == "" || p.wsGate.Control.Force) && sp.GotResponse {
 				// Learn only if asked to learn and we received a response
 				if p.monitorPod {
-					p.pile.Pile(sp, &p.pod)
+					p.pile.Add(&sp.Data)
+					//p.pile.Pile(sp, &p.pod)
 				} else {
-					p.pile.Pile(sp, nil)
+					p.pile.Add(&sp.Data)
 				}
 
 				p.pileCount += 1
@@ -568,7 +580,7 @@ func (p *plug) securityMonitor(ctx context.Context, sp *spec.SessionProfile) boo
 				p.Alert(sp.Alert)
 				p.stats("SessionLevelAlert")
 			} else {
-				if sp.Resp.Headers != nil {
+				if sp.GotResponse {
 					pi.Log.Debugf("No Alert!")
 					p.stats("NoAlert")
 				} else {
@@ -618,15 +630,17 @@ func (p *plug) ApproveResponse(req *http.Request, resp *http.Response) (*http.Re
 				return nil, errors.New("missing session")
 			}
 	*/
-	sp, spExists := ctx.Value(ctxKey("GuardSession")).(*spec.SessionProfile)
+	sp, spExists := ctx.Value(ctxKey("GuardSession")).(*SessionProfile)
 	if !spExists { // This should never happen!
 		pi.Log.Warnf("%s ........... Blocked During Response! Missing context!", p.name)
 		return nil, errors.New("missing context")
 	}
 
+	sp.GotResponse = true
+
 	sp.Alert += p.screenEnvelop(sp)
-	sp.Alert += p.screenResponse(resp, &sp.Resp)
-	sp.Alert += p.screenResponseBody(resp, &sp.RespBody)
+	sp.Alert += p.screenResponse(resp, &sp.Data.Resp)
+	sp.Alert += p.screenResponseBody(resp, &sp.Data.RespBody)
 	if (sp.Alert != "" || p.alert != "") && p.wsGate.Control.Block {
 		sp.Cancel()
 		p.stats("BlockOnResponse")
@@ -636,9 +650,9 @@ func (p *plug) ApproveResponse(req *http.Request, resp *http.Response) (*http.Re
 	if testBodyHist && resp.Body != nil {
 		//fmt.Printf("Analyze Start\n")
 
-		// Asynchrniously stream bytes from the original resp.Body
+		// Asynchronously stream bytes from the original resp.Body
 		// to a new resp.Body
-		resp.Body = iofilter.New(resp.Body, responseFilter, sp.RespBody)
+		resp.Body = iofilter.New(resp.Body, responseFilter, sp.Data.RespBody)
 	}
 
 	return resp, nil
@@ -654,18 +668,18 @@ func (p *plug) consultOnRequest(reqProfile *spec.ReqProfile) string {
 	reqBody := bytes.NewBuffer(postBody)
 	req, err := http.NewRequest(http.MethodPost, p.guardUrl+"/req", reqBody)
 	if err != nil {
-		pi.Log.Infof("guardgate consultOnRequest: http.NewRequest error %v", err)
+		pi.Log.Infof("guard-gate consultOnRequest: http.NewRequest error %v", err)
 	}
 	query := req.URL.Query()
 	query.Add("sid", p.serviceId)
 	query.Add("ns", p.namespace)
 	req.URL.RawQuery = query.Encode()
 
-	res, postErr := p.httpc.Do(req)
-	//res, postErr := p.httpc.Post(p.guardUrl+"/req", "application/json", reqBody)
+	res, postErr := p.httpClient.Do(req)
+	//res, postErr := p.httpClient.Post(p.guardUrl+"/req", "application/json", reqBody)
 	if postErr != nil {
-		pi.Log.Infof("guardgate consultOnRequest: httpc.Do error %v", postErr)
-		return fmt.Sprintf("Guard unavaliable during consult %v", postErr)
+		pi.Log.Infof("guard-gate consultOnRequest: httpClient.Do error %v", postErr)
+		return fmt.Sprintf("Guard unavailable during consult %v", postErr)
 	}
 
 	if res.Body != nil {
@@ -674,14 +688,14 @@ func (p *plug) consultOnRequest(reqProfile *spec.ReqProfile) string {
 
 	body, readErr := ioutil.ReadAll(res.Body)
 	if readErr != nil {
-		pi.Log.Infof("guardgate consultOnRequest: response error %v", readErr)
-		return fmt.Sprintf("Guard ilegal response during consult %v", readErr)
+		pi.Log.Infof("guard-gate consultOnRequest: response error %v", readErr)
+		return fmt.Sprintf("Guard ileal response during consult %v", readErr)
 	}
 	if len(body) != 0 {
-		pi.Log.Infof("guardgate consultOnRequest: response is %s", string(body))
+		pi.Log.Infof("guard-gate consultOnRequest: response is %s", string(body))
 		return fmt.Sprintf("Guard: %s", string(body))
 	}
-	pi.Log.Infof("guardgate consultOnRequest: approved!")
+	pi.Log.Infof("guard-gate consultOnRequest: approved!")
 	return ""
 }
 */
@@ -700,6 +714,10 @@ func (p *plug) reportPile() {
 
 	pi.Log.Infof("Reporting a pile with pileCount %d records to guard-service", p.pileCount)
 
+	//{
+	//	manifestJson, _ := json.MarshalIndent(p.pile, "", "  ")
+	//	fmt.Println(string(manifestJson))
+	//}
 	postBody, marshalErr := json.Marshal(p.pile)
 
 	if marshalErr != nil {
@@ -720,9 +738,9 @@ func (p *plug) reportPile() {
 	}
 	req.URL.RawQuery = query.Encode()
 
-	res, postErr := p.httpc.Do(req)
+	res, postErr := p.httpClient.Do(req)
 	if postErr != nil {
-		pi.Log.Warnf("Httpc.Do error %v", postErr)
+		pi.Log.Warnf("httpClient.Do error %v", postErr)
 		return
 	}
 
@@ -750,7 +768,7 @@ func (p *plug) Start(ctx context.Context) context.Context {
 
 func (p *plug) loadGuardian() {
 	pi.Log.Infof("(Re)loading Guardian")
-	p.wsGate = p.kubemgr.FetchConfig(p.namespace, p.serviceName, p.useConfigmap)
+	p.wsGate = p.kubeMgr.FetchConfig(p.namespace, p.serviceName, p.useConfigmap)
 	if p.wsGate.Control.Alert {
 		if p.wsGate.Control.Auto {
 			p.criteria = p.wsGate.Learned
@@ -767,8 +785,8 @@ func (p *plug) decidePod() {
 	p.alert = ""
 	p.pod.Profile()
 	if p.criteria != nil {
-		if decission := p.criteria.Pod.Decide(&p.pod); decission != "" {
-			p.alert = fmt.Sprintf("Pod: %s", decission)
+		if decision := p.criteria.Pod.Decide(&p.pod); decision != "" {
+			p.alert = fmt.Sprintf("Pod: %s", decision)
 			p.Alert(p.alert)
 			p.stats("PodLevelAlert")
 		}
@@ -783,7 +801,7 @@ func parseInterval(name string, intervalStr string, defaultVal time.Duration) (d
 		d, err = time.ParseDuration(intervalStr)
 	}
 	if err != nil {
-		pi.Log.Infof("Interval %s ilegal value %s - using defualt value instead (Err: %v)", name, intervalStr, err)
+		pi.Log.Infof("Interval %s illegal value %s - using default value instead (Err: %v)", name, intervalStr, err)
 		d = defaultVal
 	}
 	if d < MinimumInterval {
@@ -825,20 +843,20 @@ func (p *plug) Init(ctx context.Context, c map[string]string, serviceName string
 		p.ReportPileInterval = parseInterval("ReportPile", c["report-pile-interval"], ReportPileIntervalDefault)
 		p.PodMonitorInterval = parseInterval("PodMonitor", c["pod-monitor-interval"], PodMonitorIntervalDefault)
 
-		pi.Log.Debugf("guardgate configuration: servicename=%s, namespace=%s, cmname=%t, guardUrl=%s, p.monitorPod=%t, guardian-load-interval %v, report-pile-interval %v, pod-monitor-interval %v",
+		pi.Log.Debugf("guard-gate configuration: serviceName=%s, namespace=%s, useConfigmap=%t, guardUrl=%s, p.monitorPod=%t, guardian-load-interval %v, report-pile-interval %v, pod-monitor-interval %v",
 			p.serviceName, p.namespace, p.useConfigmap, p.guardUrl, p.monitorPod, c["guardian-load-interval"], c["report-pile-interval"], c["pod-monitor-interval"])
 	}
 
-	// svcname should never be "ns.{namespace}" as this is a reserved name
+	// serviceName should never be "ns.{namespace}" as this is a reserved name
 	if p.serviceName == "ns."+p.namespace {
 		// mandatory
-		panic("Ilegal Svcname - ns.{Namespace} is reserved")
+		panic("Ileal serviceName - ns.{Namespace} is reserved")
 	}
 
 	p.clearPile()
 	p.statistics = make(map[string]uint32, 8)
 
-	p.kubemgr.InitConfigs()
+	p.kubeMgr.InitConfigs()
 
 	p.loadGuardian()
 	p.decidePod()

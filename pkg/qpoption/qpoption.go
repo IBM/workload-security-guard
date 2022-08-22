@@ -21,7 +21,7 @@ import (
 // It can be extended in the future to managing multiple securiity plugs by using the rtplugs package
 
 var annotationsFilePath = queue.PodInfoVolumeMountPath + "/" + queue.PodInfoAnnotationsFilename
-var qpextentionPreifx = "qpextention.knative.dev/"
+var qpextentionPreifx = "qpextension.knative.dev/"
 
 type GateQPOption struct {
 	config           map[string]string
@@ -67,11 +67,12 @@ func (p *GateQPOption) ProcessAnnotations(annotationsPath string, qpextentionPre
 	}
 	defer file.Close()
 	p.config = make(map[string]string)
-
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		txt := scanner.Text()
 		txt = strings.ToLower(txt)
+		p.defaults.Logger.Debugf("Annotation: %s", txt)
+
 		parts := strings.Split(txt, "=")
 
 		k := parts[0]
@@ -86,6 +87,7 @@ func (p *GateQPOption) ProcessAnnotations(annotationsPath string, qpextentionPre
 			extension := keyparts[0]
 			action := keyparts[1]
 			if strings.EqualFold(extension, p.securityPlug.PlugName()) {
+				p.defaults.Logger.Debugf("Annotation of %s : %v", extension, keyparts)
 				switch action {
 				case "activate":
 					if strings.EqualFold(v, "enable") {

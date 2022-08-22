@@ -31,7 +31,7 @@ import (
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 
-	wsecurity "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1"
+	wsecurity "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1alpha1"
 	guardianclientset "github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians"
 	//informers "wsecurity.ibm.com/wsecurity/pkg/generated/informers/externalversions"
 )
@@ -63,7 +63,7 @@ func main() {
 		klog.Fatalf("Error building example clientset: %s", err.Error())
 	}
 
-	client := exampleClient.WsecurityV1()
+	client := exampleClient.WsecurityV1alpha1()
 
 	var g *wsecurity.Guardian
 
@@ -89,9 +89,9 @@ func main() {
 	g.APIVersion = "wsecurity.ibmresearch.com/v1"
 	g.Name = "mytest"
 	g.Spec = new(wsecurity.GuardianSpec)
-	g.Spec.Control.Consult = true
-	g.Spec.Control.RequestsPerMinuete = 60
-	g.Spec.Configured.Req.AddTypicalVal()
+	//g.Spec.Control.Consult = true
+	//g.Spec.Control.RequestsPerMinuets = 60
+	//g.Spec.Configured.Req.AddTypicalVal()
 	/*g.Spec.ForceAllow = true
 	g.Spec.Req.Url.Segments = make(wsecurity.U8MinmaxSlice, 1)
 	g.Spec.Req.Url.Segments[0].Max = 4
@@ -108,7 +108,7 @@ func main() {
 	g, err = client.Guardians("default").Get(context.TODO(), "mytest", v1.GetOptions{})
 	fmt.Printf("last get err %v\n", err)
 	fmt.Printf("guardian %v\n", g)
-	fmt.Printf("guardian rpm %d\n", g.Spec.Control.RequestsPerMinuete)
+	//fmt.Printf("guardian rpm %d\n", g.Spec.Control.RequestsPerMinuets)
 	//kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	//exampleInformerFactory := informers.NewSharedInformerFactory(exampleClient, time.Second*30)
 

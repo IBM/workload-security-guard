@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	spec "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1"
+	spec "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1alpha1"
 	guardianclientset "github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians"
-	v1 "github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians/typed/wsecurity/v1"
+	wsecurity "github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians/typed/wsecurity/v1alpha1"
 
 	pi "github.com/IBM/go-security-plugs/pluginterfaces"
 
@@ -24,12 +24,12 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-type Kubemgr struct {
+type KubeMgr struct {
 	clientset *kubernetes.Clientset
-	gClient   v1.WsecurityV1Interface
+	gClient   wsecurity.WsecurityV1alpha1Interface
 }
 
-func (k *Kubemgr) InitConfigs() {
+func (k *KubeMgr) InitConfigs() {
 	var kubeconfig *string
 	var cfg *rest.Config
 	var errInCluster error
@@ -55,7 +55,7 @@ func (k *Kubemgr) InitConfigs() {
 	if err != nil {
 		panic(err.Error())
 	}
-	k.gClient = guardianClient.WsecurityV1()
+	k.gClient = guardianClient.WsecurityV1alpha1()
 
 	var errClientset error
 	k.clientset, errClientset = kubernetes.NewForConfig(cfg)
@@ -64,8 +64,7 @@ func (k *Kubemgr) InitConfigs() {
 	}
 }
 
-//
-func (k *Kubemgr) ReadCrd(namespace string, serviceId string) *spec.GuardianSpec {
+func (k *KubeMgr) ReadCrd(namespace string, serviceId string) *spec.GuardianSpec {
 	g, err := k.gClient.Guardians(namespace).Get(context.TODO(), serviceId, metav1.GetOptions{})
 	if err != nil {
 		pi.Log.Infof("Missing Guardian CRD %s.%s (Err %s)", serviceId, namespace, err.Error())
@@ -73,12 +72,16 @@ func (k *Kubemgr) ReadCrd(namespace string, serviceId string) *spec.GuardianSpec
 		return nil
 	}
 	pi.Log.Debugf("Found Guardian CRD %s.%s", serviceId, namespace)
-	//fmt.Print((*spec.WsGate)(g.Spec).Marshal(0))
-	(*spec.WsGate)(g.Spec).Reconcile()
+	if bytes, err := json.Marshal(g.Spec); err != nil {
+		pi.Log.Debugf(string(bytes))
+	} else {
+		pi.Log.Debugf(err.Error())
+	}
+	(*spec.GuardianSpec)(g.Spec).Reconcile()
 	return g.Spec
 }
 
-func (k *Kubemgr) ReadConfigMap(namespace string, sid string) *spec.GuardianSpec {
+func (k *KubeMgr) ReadConfigMap(namespace string, sid string) *spec.GuardianSpec {
 	cmname := "guardian." + sid
 	cm, err := k.clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmname, metav1.GetOptions{})
 	if err != nil {
@@ -95,29 +98,23 @@ func (k *Kubemgr) ReadConfigMap(namespace string, sid string) *spec.GuardianSpec
 			pi.Log.Infof("wsgate getConfig: unmarshel error %v", jsonErr)
 			return nil
 		}
-		(*spec.WsGate)(g).Reconcile()
+		(*spec.GuardianSpec)(g).Reconcile()
 	}
 	pi.Log.Debugf("Get %s ConfigMap succesful", cmname)
 	return g
-	//	err = json.Unmarshal([]byte(cm.Data["guardian"]), &p.wsGate)
-	//	if err != nil {
-	//		fmt.Printf("ConfigMap Unmarshal Error: %v\n", err)
-	//		panic(err.Error())
-	//	}
 }
 
 // Set a Guardian Config Map (Update if exists, create if not)
-// Not using Kube's apply tp avoid kube's server side merge,
-// ...so we need to do this ugly thingy...
-// This ugly thingy has a race condition!
-// Sometimes it will fail and we will just return false
-func (k *Kubemgr) SetCm(ns string, sid string, guardianSpec *spec.GuardianSpec) string {
+// Not using Kube's apply to avoid kube's server side merge,
+// ...so we need to do this ugly thingy... which has a race condition!
+// Sometimes it will fail and we loose the update (as someone else updated the CM)
+// Losing updates to CM is non critical in the overall picture of Guard
+// Future: investigate again and improve
+func (k *KubeMgr) SetCm(ns string, sid string, guardianSpec *spec.GuardianSpec) string {
 	var gbytes []byte
 	cmname := "guardian." + sid
-	//fmt.Printf("SetCm %s: data: %v\n", cmname, guardianSpec)
 	cm, err := k.clientset.CoreV1().ConfigMaps(ns).Get(context.TODO(), cmname, metav1.GetOptions{})
 	if err == nil {
-		//fmt.Printf("setCm %s: guardian read succesful \n", cmname)
 		g := new(spec.GuardianSpec)
 		gdata, ok := cm.Data["Guardian"]
 		if ok && len(gdata) > 0 { // Guardian exists
@@ -125,7 +122,7 @@ func (k *Kubemgr) SetCm(ns string, sid string, guardianSpec *spec.GuardianSpec) 
 			if err := json.Unmarshal(gbytes, g); err != nil {
 				return fmt.Sprintf("SetCm %s: Unmarshel error %s", cmname, err.Error())
 			}
-			(*spec.WsGate)(g).Reconcile()
+			(*spec.GuardianSpec)(g).Reconcile()
 		} else {
 			if cm.Data == nil {
 				cm.Data = make(map[string]string, 1)
@@ -138,65 +135,49 @@ func (k *Kubemgr) SetCm(ns string, sid string, guardianSpec *spec.GuardianSpec) 
 			if guardianSpec.Configured != nil {
 				g.Configured = guardianSpec.Configured
 			}
-			if guardianSpec.Control != nil {
+			if guardianSpec.Learned != nil {
 				g.Learned = guardianSpec.Learned
 			}
 		}
 		gbytes, err = json.Marshal(g)
 		if err != nil {
-			//fmt.Printf("SetCm %s: Error marshaling data: %s\n", cmname, err.Error())
 			return fmt.Sprintf("SetCm %s: Error marshaling data: %s", cmname, err.Error())
 		}
 		cm.Data["Guardian"] = string(gbytes)
 
-		//fmt.Printf("SetCm %s: After marshaling data: %s\n", cmname, gbytes)
-
-		//fmt.Printf("SetCm %s: cm.Data[\"Guardian\"]: %s\n", cmname, cm.Data["Guardian"])
-
 		_, err = k.clientset.CoreV1().ConfigMaps(ns).Update(context.TODO(), cm, metav1.UpdateOptions{})
 		if err != nil {
-			//fmt.Printf("SetCm %s: Error updating resource: %s\n", cmname, err.Error())
 			return fmt.Sprintf("SetCm %s: Error updating resource: %s", cmname, err.Error())
 		}
-
-		//fmt.Printf("setCm %s: guardian update succesfull\n", cmname)
 	} else {
-		//fmt.Printf("setCm %s: guardian read err %s\n", cmname, err.Error())
 		cm = new(corev1.ConfigMap)
 		cm.Name = cmname
 		cm.Data = make(map[string]string, 1)
 		gbytes, err = json.Marshal(guardianSpec)
 		if err != nil {
-			//fmt.Printf("SetCm %s: Error marshaling data during create: %s\n", cmname, err.Error())
 			return fmt.Sprintf("SetCm %s: Error marshaling data during create: %s", cmname, err.Error())
 		}
 		cm.Data["Guardian"] = string(gbytes)
 		_, err = k.clientset.CoreV1().ConfigMaps(ns).Create(context.TODO(), cm, metav1.CreateOptions{})
 		if err != nil {
-			//fmt.Printf("SetCm %s: Error creating resource: %s\n", cmname, err.Error())
 			return fmt.Sprintf("SetCm %s: Error creating resource: %s", cmname, err.Error())
 		}
-		//fmt.Printf("setCm %s: guardian create succesfull\n", cmname)
 	}
 
 	return ""
 }
 
 // Set a Guardian Custom Resource (Update if exists, create if not)
-// Kube does not support server side udpate with create if not exist,
-// ...so we need to do this ugly thingy...
-// This ugly thingy has a race condition!
-// Sometimes it will fail and we will just return false
-func (k *Kubemgr) SetCrd(ns string, sid string, guardianSpec *spec.GuardianSpec) string {
+// Not using Kube's apply to avoid kube's server side merge,
+// ...so we need to do this ugly thingy... which has a race condition!
+// Sometimes it will fail and we lose the update (as someone else updated the Crd)
+// Losing updates to CRD is non critical in the overall picture of Guard
+// Future: investigate again and improve
+func (k *KubeMgr) SetCrd(ns string, sid string, guardianSpec *spec.GuardianSpec) string {
 	var g *spec.Guardian
 	var err error
 	g, err = k.gClient.Guardians(ns).Get(context.TODO(), sid, metav1.GetOptions{})
 	if err == nil {
-		//if g.Spec.Learned != nil {
-		//	fmt.Printf("setCrd: guardian read Method %d %v\n", len(g.Spec.Learned.Req.Method), g.Spec.Learned.Req.Method)
-		//} else {
-		//	fmt.Printf("setCrd: guardian read g.Spec.Learned is nil\n")
-		//}
 		g.Name = sid
 		if guardianSpec != nil {
 			if guardianSpec.Control != nil {
@@ -205,16 +186,14 @@ func (k *Kubemgr) SetCrd(ns string, sid string, guardianSpec *spec.GuardianSpec)
 			if guardianSpec.Configured != nil {
 				g.Spec.Configured = guardianSpec.Configured
 			}
-			if guardianSpec.Control != nil {
+			if guardianSpec.Learned != nil {
 				g.Spec.Learned = guardianSpec.Learned
 			}
 		}
 		_, err = k.gClient.Guardians(ns).Update(context.TODO(), g, metav1.UpdateOptions{})
 		if err != nil {
-			//fmt.Printf("setCrd: update err %v\n", err)
 			return fmt.Sprintf("SetCrd: Error updating resource: %s", err.Error())
 		}
-		//fmt.Printf("setCrd: guardian update succesfull %v\n", g.Spec.Control)
 	} else {
 		g = new(spec.Guardian)
 		fmt.Printf("setCrd: guardian read err %v\n", err)
@@ -230,15 +209,13 @@ func (k *Kubemgr) SetCrd(ns string, sid string, guardianSpec *spec.GuardianSpec)
 		}
 		fmt.Printf("setCrd: guardian create succesfull %v\n", g)
 	}
-
-	//fmt.Printf("setCrd: success!\n")
 	return ""
 }
 
-/*
+/*    Leave this commented out, for future exploration and discussion
 // Set a Guardian Config Map (Update if exists, create if not)
-// using Apply
-func (k *Kubemgr) SetCmApply(ns string, cmname string, guardianSpec *spec.GuardianSpec) string {
+// using Apply -- not used as server side merging resulted in issues for Guard
+func (k *Kubemgr) SetCmApply(ns string, cmname string, guardianSpec *spec.WsGate) string {
 	gbytes, err := json.Marshal(guardianSpec)
 	if err != nil {
 		//fmt.Printf("setCm: marshal err %v\n", err)
@@ -262,8 +239,8 @@ func (k *Kubemgr) SetCmApply(ns string, cmname string, guardianSpec *spec.Guardi
 }
 
 // Set a Guardian Custom Resource (Update if exists, create if not)
-// using Apply
-func (k *Kubemgr) SetCrdApply(ns string, sid string, guardianSpec *spec.GuardianSpec) string {
+// using Apply -- not used as server side merging resulted in issues for Guard
+func (k *Kubemgr) SetCrdApply(ns string, sid string, guardianSpec *spec.WsGate) string {
 	g := new(spec.Guardian)
 	g.Name = sid
 	g.Spec = guardianSpec
@@ -291,7 +268,7 @@ func (k *Kubemgr) SetCrdApply(ns string, sid string, guardianSpec *spec.Guardian
 }
 */
 
-func (k *Kubemgr) FetchConfig(ns string, sid string, cm bool) *spec.GuardianSpec {
+func (k *KubeMgr) FetchConfig(ns string, sid string, cm bool) *spec.GuardianSpec {
 	var gurdianSpec *spec.GuardianSpec
 	if !strings.EqualFold(sid, "ns-"+ns) {
 		if cm {
@@ -312,52 +289,18 @@ func (k *Kubemgr) FetchConfig(ns string, sid string, cm bool) *spec.GuardianSpec
 
 	if gurdianSpec == nil {
 		gurdianSpec = new(spec.GuardianSpec)
-		(*spec.WsGate)(gurdianSpec).Reconcile()
 		// default gurdianSpec has:
 		// 		gurdianSpec.falseAllow=false
 		// 		gurdianSpec.ConsultGuard.Active = false
-		(*spec.WsGate)(gurdianSpec).AutoActivate()
+		(*spec.GuardianSpec)(gurdianSpec).AutoActivate()
 		// now gurdianSpec has:
 		// 		gurdianSpec.falseAllow=false
 		// 		gurdianSpec.ConsultGuard.Active = false
-
 	}
 	return gurdianSpec
-
-	/*
-		req, err := http.NewRequest(http.MethodGet, p.guardUrl+"/config", nil)
-		if err != nil {
-			pi.Log.Infof("wsgate getConfig: http.NewRequest error %v", err)
-		}
-		query := req.URL.Query()
-		query.Add("sid", p.id)
-		req.URL.RawQuery = query.Encode()
-		res, getErr := p.httpc.Do(req)
-		if getErr != nil {
-			pi.Log.Infof("wsgate getConfig: httpc.Do error %v", getErr)
-			return
-		}
-
-		if res.Body != nil {
-			defer res.Body.Close()
-		}
-
-		body, readErr := ioutil.ReadAll(res.Body)
-		if readErr != nil {
-			pi.Log.Infof("wsgate getConfig: read body error %v", readErr)
-		}
-
-		//pi.Log.Infof("wsgate getConfig: unmarshal %s", string(body))
-		jsonErr := json.Unmarshal(body, &p.gateConfig)
-		if jsonErr != nil {
-			pi.Log.Infof("wsgate getConfig: unmarshel error %v", jsonErr)
-		}
-
-		//pi.Log.Infof("wsgate getConfig: ended %v ", p.gateConfig)
-	*/
 }
 
-func (k *Kubemgr) WatchOnce(ns string, set func(ns string, sid string, g *spec.GuardianSpec)) {
+func (k *KubeMgr) WatchOnce(ns string, set func(ns string, sid string, g *spec.GuardianSpec)) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			fmt.Printf("Recovered from panic during watchCrdOnce! Recover: %v\n", recovered)
@@ -455,7 +398,7 @@ func (k *Kubemgr) WatchOnce(ns string, set func(ns string, sid string, g *spec.G
 					set(ns, sid, nil)
 					continue
 				}
-				(*spec.WsGate)(g).Reconcile()
+				(*spec.GuardianSpec)(g).Reconcile()
 				set(ns, sid, g)
 			case watch.Error:
 				s := event.Object.(*metav1.Status)

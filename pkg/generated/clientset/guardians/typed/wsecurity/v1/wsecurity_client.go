@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1"
+	v1 "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1alpha1"
 	"github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians/scheme"
 	rest "k8s.io/client-go/rest"
 )

@@ -22,7 +22,7 @@ import (
 	"context"
 	"time"
 
-	v1 "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1"
+	v1 "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1alpha1"
 	scheme "github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"

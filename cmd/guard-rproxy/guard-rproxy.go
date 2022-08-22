@@ -81,9 +81,9 @@ func getLogLevel(level string) zapcore.Level {
 func createLogger(logLevel string) *zap.SugaredLogger {
 	rawJSON := []byte(`{
 		"level": "info",
-		"encoding": "json",
+		"encoding": "console",
 		"outputPaths": ["stdout"],
-		"development": false,
+		"development": true,
 		"errorOutputPaths": ["stderr"],
 		"encoderConfig": {
 		  "messageKey": "message",
@@ -124,7 +124,7 @@ func main() {
 		env.GuardUrl = "http://guard-service.knative-guard"
 	}
 	plugConfig["guard-url"] = env.GuardUrl
-	plugConfig["report-pile-interval"] = "15s"
+	//plugConfig["report-pile-interval"] = "15s"
 
 	if env.UseConfigmap {
 		plugConfig["use-configmap"] = "true"

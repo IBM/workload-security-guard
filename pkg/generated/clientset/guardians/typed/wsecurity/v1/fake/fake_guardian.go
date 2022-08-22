@@ -21,7 +21,7 @@ package fake
 import (
 	"context"
 
-	wsecurityv1 "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1"
+	wsecurityv1 "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

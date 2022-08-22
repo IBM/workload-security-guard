@@ -21,7 +21,7 @@ package guardians
 import (
 	"fmt"
 
-	wsecurityv1 "github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians/typed/wsecurity/v1"
+	wsecurityv1alpha1 "github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians/typed/wsecurity/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -29,19 +29,19 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	WsecurityV1() wsecurityv1.WsecurityV1Interface
+	WsecurityV1alpha1() wsecurityv1alpha1.WsecurityV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	wsecurityV1 *wsecurityv1.WsecurityV1Client
+	wsecurityV1alpha1 *wsecurityv1alpha1.WsecurityV1alpha1Client
 }
 
-// WsecurityV1 retrieves the WsecurityV1Client
-func (c *Clientset) WsecurityV1() wsecurityv1.WsecurityV1Interface {
-	return c.wsecurityV1
+// WsecurityV1alpha1 retrieves the WsecurityV1alpha1Client
+func (c *Clientset) WsecurityV1alpha1() wsecurityv1alpha1.WsecurityV1alpha1Interface {
+	return c.wsecurityV1alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -65,7 +65,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.wsecurityV1, err = wsecurityv1.NewForConfig(&configShallowCopy)
+	cs.wsecurityV1alpha1, err = wsecurityv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.wsecurityV1 = wsecurityv1.NewForConfigOrDie(c)
+	cs.wsecurityV1alpha1 = wsecurityv1alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -90,7 +90,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.wsecurityV1 = wsecurityv1.New(c)
+	cs.wsecurityV1alpha1 = wsecurityv1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

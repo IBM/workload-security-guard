@@ -11,14 +11,14 @@ import (
 
 	"github.com/gorilla/mux"
 
-	spec "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1"
+	spec "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1alpha1"
 	guardkubemgr "github.com/IBM/workload-security-guard/pkg/guard-kubemgr"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
 
 type guardianui struct {
-	kmgr guardkubemgr.Kubemgr
+	kmgr guardkubemgr.KubeMgr
 }
 
 var gui *guardianui
@@ -46,13 +46,7 @@ func setGuadian(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	/*
-		if g.Configured == nil {
-			g.Configured = new(spec.Criteria)
-		}
-		g.Configured.Normalize()
-	*/
-	//Serr := json.NewDecoder(r.Body).Decode(&g)
+
 	var ret string
 	if where == "crd" {
 		ret = gui.kmgr.SetCrd(namespace, service, &g)

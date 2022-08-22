@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians"
-	wsecurityv1 "github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians/typed/wsecurity/v1"
-	fakewsecurityv1 "github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians/typed/wsecurity/v1/fake"
+	wsecurityv1alpha1 "github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians/typed/wsecurity/v1alpha1"
+	fakewsecurityv1alpha1 "github.com/IBM/workload-security-guard/pkg/generated/clientset/guardians/typed/wsecurity/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -76,7 +76,7 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 
 var _ clientset.Interface = &Clientset{}
 
-// WsecurityV1 retrieves the WsecurityV1Client
-func (c *Clientset) WsecurityV1() wsecurityv1.WsecurityV1Interface {
-	return &fakewsecurityv1.FakeWsecurityV1{Fake: &c.Fake}
+// WsecurityV1alpha1 retrieves the WsecurityV1alpha1Client
+func (c *Clientset) WsecurityV1alpha1() wsecurityv1alpha1.WsecurityV1alpha1Interface {
+	return &fakewsecurityv1alpha1.FakeWsecurityV1alpha1{Fake: &c.Fake}
 }

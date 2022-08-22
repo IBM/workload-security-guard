@@ -27,7 +27,7 @@ gosrc="${GOBIN:-$(go env GOPATH)/src}"
 projfullpath="$(cd ${SCRIPT_ROOT}; pwd)"
 boilerplate="${projfullpath}/scripts/boilerplate.go.txt"
 proj="github.com/IBM/workload-security-guard"
-pkgapis="${proj}/pkg/apis/wsecurity/v1"
+pkgapis="${proj}/pkg/apis/wsecurity/v1alpha1"
 outpack="${proj}/pkg/generated/clientset" 
 
 
