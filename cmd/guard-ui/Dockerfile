@@ -30,6 +30,7 @@ RUN go build -v -o /guard-ui cmd/guard-ui/*.go
 FROM alpine:latest
 
 RUN apk add --update curl
+RUN apk add  libc6-compact
 
 WORKDIR /
 
@@ -45,4 +46,4 @@ RUN ibmcloud config --check-version=false
 COPY --from=build /guard-ui /guard-ui
 COPY --from=fe /build /frontend/build
 
-EXPOSE 80
+EXPOSE 9000

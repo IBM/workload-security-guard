@@ -120,5 +120,6 @@ func main() {
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir(path)))
 
 	fmt.Println("Guardian App v0.01")
+	fmt.Println("Services on port 9000")
 	log.Fatal(http.ListenAndServe(":9000", router))
 }
