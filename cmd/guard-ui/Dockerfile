@@ -27,7 +27,9 @@ RUN go build -v -o /guard-ui cmd/guard-ui/*.go
 ##
 ## Deploy
 ##
-FROM alpine/curl
+FROM alpine:latest
+
+RUN apk add --update curl
 
 WORKDIR /
 
