@@ -27,7 +27,7 @@ RUN go build -v -o /guard-ui cmd/guard-ui/*.go
 ##
 ## Deploy
 ##
-FROM gcr.io/distroless/base-alpine
+FROM alpine
 
 WORKDIR /
 
@@ -46,4 +46,5 @@ COPY --from=fe /build /frontend/build
 
 EXPOSE 80
 
+RUN adduser -D nonroot
 USER nonroot:nonroot
