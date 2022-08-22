@@ -37,9 +37,7 @@ RUN curl -fsSL https://clis.cloud.ibm.com/install/linux | sh && \
     ibmcloud plugin install container-registry -f && \
     ibmcloud plugin install observe-service -f && \
     ibmcloud plugin install code-engine -f && \
-    if [[ "$TARGETPLATFORM" != "linux/arm64" ]]; then ibmcloud plugin install vpc-infrastructure -f; fi && \
-    ibmcloud config --check-version=false && \
-    chmod -R g=u ${HOME}
+    ibmcloud config --check-version=false 
 
 COPY --from=build /guard-ui /guard-ui
 COPY --from=fe /build /frontend/build
