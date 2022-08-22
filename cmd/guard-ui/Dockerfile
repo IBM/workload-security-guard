@@ -27,17 +27,18 @@ RUN go build -v -o /guard-ui cmd/guard-ui/*.go
 ##
 ## Deploy
 ##
-FROM alpine
+FROM alpine/curl
 
 WORKDIR /
 
 # Install the ibmcloud cli
-RUN curl -fsSL https://clis.cloud.ibm.com/install/linux | sh && \
-    ibmcloud plugin install container-service -f && \
-    ibmcloud plugin install container-registry -f && \
-    ibmcloud plugin install observe-service -f && \
-    ibmcloud plugin install code-engine -f && \
-    ibmcloud config --check-version=false 
+RUN curl -fsSL https://clis.cloud.ibm.com/install/linux | sh
+RUN ibmcloud update
+RUN ibmcloud plugin install container-service -f
+RUN ibmcloud plugin install container-registry -f
+RUN ibmcloud plugin install observe-service -f
+RUN ibmcloud plugin install code-engine -f
+RUN ibmcloud config --check-version=false
 
 COPY --from=build /guard-ui /guard-ui
 COPY --from=fe /build /frontend/build
