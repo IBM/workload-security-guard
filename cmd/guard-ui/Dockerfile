@@ -46,6 +46,3 @@ COPY --from=build /guard-ui /guard-ui
 COPY --from=fe /build /frontend/build
 
 EXPOSE 80
-
-RUN adduser -D nonroot
-USER nonroot:nonroot
