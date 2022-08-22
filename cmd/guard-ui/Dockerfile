@@ -30,7 +30,7 @@ RUN go build -v -o /guard-ui cmd/guard-ui/*.go
 FROM alpine:latest
 
 RUN apk add --update curl
-RUN apk add  libc6-compact
+RUN apk add  libc6-compat
 
 WORKDIR /
 
