@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 
@@ -21,9 +22,7 @@ type guardianui struct {
 	kmgr guardkubemgr.Kubemgr
 }
 
-var gui *guardianui
-
-func setGuadian(w http.ResponseWriter, r *http.Request) {
+func (gui *guardianui) setGuadian(w http.ResponseWriter, r *http.Request) {
 	where := mux.Vars(r)["where"]
 	namespace := mux.Vars(r)["namespace"]
 	service := mux.Vars(r)["service"]
@@ -74,7 +73,7 @@ func setGuadian(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonResp)
 }
 
-func getGuadian(w http.ResponseWriter, r *http.Request) {
+func (gui *guardianui) getGuadian(w http.ResponseWriter, r *http.Request) {
 	where := mux.Vars(r)["where"]
 	namespace := mux.Vars(r)["namespace"]
 	service := mux.Vars(r)["service"]
@@ -108,14 +107,21 @@ func getCodeDir() string {
 }
 
 func main() {
-	gui = new(guardianui)
-	//gui.initConfigs()
+	gui := new(guardianui)
 	gui.kmgr.InitConfigs()
+
+	// path to index file when running from code
 	d := getCodeDir()
+	path := filepath.Join(d, "frontend/build/index.html")
+
+	if _, err := os.Stat(path); err != nil {
+		// path to index file when running from a container
+		path = "/frontend/index.html"
+	}
+
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/guardian/{where}/{namespace}/{service}", setGuadian).Methods("POST")
-	router.HandleFunc("/guardian/{where}/{namespace}/{service}", getGuadian).Methods("GET")
-	path := filepath.Join(d, "frontend", "build")
+	router.HandleFunc("/guardian/{where}/{namespace}/{service}", gui.setGuadian).Methods("POST")
+	router.HandleFunc("/guardian/{where}/{namespace}/{service}", gui.getGuadian).Methods("GET")
 
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir(path)))
 
