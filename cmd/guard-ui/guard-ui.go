@@ -112,12 +112,15 @@ func main() {
 
 	// path to index file when running from code
 	d := getCodeDir()
-	path := filepath.Join(d, "frontend/build/index.html")
-
+	fmt.Println("Serving from", d)
+	path := filepath.Join(d, "frontend/build")
+	fmt.Println("Serving from", path)
 	if _, err := os.Stat(path); err != nil {
 		// path to index file when running from a container
-		path = "/frontend/index.html"
+		path = "/frontend"
 	}
+	fmt.Println("Guardian App v0.01")
+	fmt.Println("Serving from", path)
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/guardian/{where}/{namespace}/{service}", gui.setGuadian).Methods("POST")
@@ -125,7 +128,6 @@ func main() {
 
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir(path)))
 
-	fmt.Println("Guardian App v0.01")
 	fmt.Println("Services on port 9000")
 	log.Fatal(http.ListenAndServe(":9000", router))
 }
