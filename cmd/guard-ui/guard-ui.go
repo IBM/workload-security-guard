@@ -165,12 +165,25 @@ func main() {
 		path = "/frontend"
 	}
 	fmt.Println("Guardian App v0.01")
-	fmt.Println("Serving from", path)
-	fmt.Printf("Setup Namespace %s ServiceName %s UseConfigmap %t LockConfigmap %t\n",
-		gui.currentSetup.Namespace,
-		gui.currentSetup.ServiceName,
-		gui.currentSetup.UseConfigmap,
-		gui.currentSetup.LockConfigmap)
+	fmt.Printf("Serving frontend from path: %s\n", path)
+	if gui.currentSetup.ServiceName != "" {
+		fmt.Printf("Setup ServiceName: %s\n", gui.currentSetup.ServiceName)
+	}
+	if gui.currentSetup.Namespace != "" {
+		fmt.Printf("Setup Namespace: %s\n", gui.currentSetup.Namespace)
+	}
+	if gui.currentSetup.UseConfigmap {
+		fmt.Println("Setup UseConfigmap: true")
+	}
+	if gui.currentSetup.LockConfigmap {
+		fmt.Println("Setup LockConfigmap: true")
+	}
+	if gui.currentSetup.LockServiceName {
+		fmt.Println("Setup LockServiceName: true")
+	}
+	if gui.currentSetup.LockNamespace {
+		fmt.Println("Setup LockNamespace: true")
+	}
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/guardian/{where}/{namespace}/{service}", gui.setGuadian).Methods("POST")

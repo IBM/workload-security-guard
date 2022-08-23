@@ -31,6 +31,7 @@ FROM alpine:latest
 
 RUN apk add --update curl
 RUN apk add  libc6-compat
+RUN apk add jq
 
 WORKDIR /
 
