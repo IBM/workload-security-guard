@@ -46,6 +46,6 @@ RUN ibmcloud config --check-version=false
 COPY --from=build /guard-ui /usr/local/bin/guard-ui
 COPY --from=fe /build /frontend
 
-COPY start /usr/local/bin/start
+COPY cmd/guard-ui/start /usr/local/bin/start
 
 EXPOSE 9000
