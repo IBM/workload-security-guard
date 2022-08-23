@@ -11,6 +11,7 @@ import (
 	"runtime"
 
 	"github.com/gorilla/mux"
+	"github.com/kelseyhightower/envconfig"
 
 	spec "github.com/IBM/workload-security-guard/pkg/apis/wsecurity/v1"
 	guardkubemgr "github.com/IBM/workload-security-guard/pkg/guard-kubemgr"
@@ -18,8 +19,19 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
 
+type config struct {
+	ServiceName     string `split_words:"true" required:"false"`
+	Namespace       string `split_words:"true" required:"false"`
+	UseConfigmap    bool   `split_words:"true" required:"false"`
+	LockServiceName bool   `split_words:"true" required:"false"`
+	LockNamespace   bool   `split_words:"true" required:"false"`
+	LockConfigmap   bool   `split_words:"true" required:"false"`
+	LogLevel        string `split_words:"true" required:"false"`
+}
+
 type guardianui struct {
-	kmgr guardkubemgr.Kubemgr
+	kmgr         guardkubemgr.Kubemgr
+	currentSetup config
 }
 
 func (gui *guardianui) setGuadian(w http.ResponseWriter, r *http.Request) {
@@ -98,6 +110,36 @@ func (gui *guardianui) getGuadian(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(g)
 }
 
+func (gui *guardianui) setup(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Guardian Setup\n")
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(gui.currentSetup)
+}
+
+func (gui *guardianui) initialize() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(r)
+			fmt.Println("")
+			fmt.Println("*-----------------------------------------------------------*")
+			fmt.Println("* Unable to communicate with KubeAPI                        *")
+			fmt.Println("*                                                           *")
+			fmt.Println("* 1. Login to ibm cloud:                                    *")
+			fmt.Println("*    > ibmcloud loin                                        *")
+			fmt.Println("*                                                           *")
+			fmt.Println("* 2. Connect to a code engine project:                      *")
+			fmt.Println("*    > ibmcloud ce project select --name <ProjectName> -k   *")
+			fmt.Println("*                                                           *")
+			fmt.Println("* Then run:                                                 *")
+			fmt.Println("*    > guard-ui                                             *")
+			fmt.Println("*-----------------------------------------------------------*")
+			fmt.Println("")
+		}
+	}()
+	gui.kmgr.InitConfigs()
+}
+
 func getCodeDir() string {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
@@ -108,23 +150,32 @@ func getCodeDir() string {
 
 func main() {
 	gui := new(guardianui)
-	gui.kmgr.InitConfigs()
+	gui.initialize()
+
+	if err := envconfig.Process("", &gui.currentSetup); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to process environment: %s\n", err.Error())
+		os.Exit(1)
+	}
 
 	// path to index file when running from code
 	d := getCodeDir()
-	fmt.Println("Serving from", d)
 	path := filepath.Join(d, "frontend/build")
-	fmt.Println("Serving from", path)
 	if _, err := os.Stat(path); err != nil {
 		// path to index file when running from a container
 		path = "/frontend"
 	}
 	fmt.Println("Guardian App v0.01")
 	fmt.Println("Serving from", path)
+	fmt.Printf("Setup Namespace %s ServiceName %s UseConfigmap %t LockConfigmap %t\n",
+		gui.currentSetup.Namespace,
+		gui.currentSetup.ServiceName,
+		gui.currentSetup.UseConfigmap,
+		gui.currentSetup.LockConfigmap)
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/guardian/{where}/{namespace}/{service}", gui.setGuadian).Methods("POST")
 	router.HandleFunc("/guardian/{where}/{namespace}/{service}", gui.getGuadian).Methods("GET")
+	router.HandleFunc("/setup", gui.setup).Methods("GET")
 
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir(path)))
 

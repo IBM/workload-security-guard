@@ -1,8 +1,7 @@
-//import logo from './logo.svg';
 import './App.css';
+import React, {useEffect, useState, useRef } from "react";
 import {Guardian} from './Guardian';
 import {Button, Collapse, Alert, AlertTitle, Stack} from '@mui/material';
-import React, { useState, useRef } from "react";
 import GetIcon from '@mui/icons-material/GetApp';
 import SendIcon from '@mui/icons-material/Send';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -67,7 +66,9 @@ function App() {
   const [sidVal, setSid] = useState("");
   const [nsVal, setNs] = useState("");
   const [cmVal, setCm] = useState("crd");
-  
+  const [cmSetup, setCmSetup] = useState(false);
+  const [nsSetup, setNsSetup] = useState(false);
+  const [sidSetup, setSidSetup] = useState(false);
   let collapse
 
   function onGetClick() {
@@ -163,6 +164,51 @@ function App() {
       })
   }
  
+
+  function getSetup() {
+    setSuccess("")
+    setInfo("")
+    setError("")
+          
+    let url = "setup"
+    console.log("fetching", url)
+    fetch(url)
+    .then( response => {
+      const isJson = response.headers.get('content-type')?.includes('application/json');
+      if (!response.ok) { 
+        console.log("mmm... not ok!"); 
+        throw response 
+      }
+      console.log("content-type", response.headers.get('content-type'))
+      if (!isJson) { 
+        console.log("mmm... not json!"); 
+        throw new Error("Response is not a json...") 
+      }
+      return response.json()  //we only get here if there is no error
+    })
+    .then( json => {
+      console.log("setup results", json)
+      if (json.UseConfigmap) {
+        setCm("cm");
+      } else {
+        setCm("crd");
+      }
+      setCmSetup(json.LockConfigmap);
+      setNsSetup(json.LockNamespace);
+      setSidSetup(json.LockServiceName);
+      setSid(json.ServiceName);
+      setNs(json.Namespace);
+      setSuccess("Succeasfuly read the setup");
+      if (collapse) {
+        collapse()
+      }
+    })
+    .catch( err => {
+      console.log("mmm... fetch error...",err)
+      setError("Error while reading Guardian from cluster")
+    })
+  };
+
   function setCollapse(c) {
     console.log("setCollapse at APP")
     collapse = c
@@ -267,7 +313,11 @@ function App() {
     console.log("handleCmChange", event.target.value)
     setCm(event.target.value)
   }
-
+  useEffect(()=>{
+    console.log("----getSetup-----")
+    getSetup()
+  }, [])
+  
   return (
     <div className="App">
       <Stack sx={{ width: '100%' }} spacing={2}>
@@ -323,15 +373,15 @@ function App() {
             <TableRow>
               <TableCell align="center" colSpan={2}>
                 <RadioGroup sx={{padding:0, paddingLeft:"3em" }} column  value={cmVal}  onChange={handleCmChange} name="crd-cm-group">
-                  <FormControlLabel value="crd" control={<Radio sx={{padding:"5px" }} />} label={<Typography sx={{ fontSize: 12 }}>CRD</Typography>} />
-                  <FormControlLabel value="cm" control={<Radio  sx={{padding:"5px" }} />} label={<Typography sx={{ fontSize: 12 }}>ConfigMap</Typography>} />
+                  <FormControlLabel value="crd" disabled={cmSetup} control={<Radio sx={{padding:"5px" }} />} label={<Typography sx={{ fontSize: 12 }}>CRD</Typography>} />
+                  <FormControlLabel value="cm" disabled={cmSetup} control={<Radio  sx={{padding:"5px" }} />} label={<Typography sx={{ fontSize: 12 }}>ConfigMap</Typography>} />
                 </RadioGroup>
               </TableCell>
               <TableCell align="center" colSpan={2}>
-                <TextField sx={{ margin: "1em"}} id="ns" label="Namespace" variant="standard" value={nsVal} onChange={handleNsChange} />
+                <TextField sx={{ margin: "1em"}} id="ns"  disabled={nsSetup} label="Namespace" variant="standard" value={nsVal} onChange={handleNsChange} />
               </TableCell>
               <TableCell align="center" colSpan={2}>
-                <TextField sx={{ margin: "1em"}} id="sid" label="Service Name" variant="standard"  value={sidVal} onChange={handleSidChange} />
+                <TextField sx={{ margin: "1em"}} id="sid"  disabled={sidSetup} label="Service Name" variant="standard"  value={sidVal} onChange={handleSidChange} />
               </TableCell>
               </TableRow>
         </TableBody>

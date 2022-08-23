@@ -1,0 +1,24 @@
+#/bin/sh
+if [ $# -lt 1 ]; then 
+   printf "\n"
+   printf "\tUsage: $0 <Code Engine Project Name>\n"
+   printf "\n"
+   printf "Listing the projects in the current resource group:\n"
+   ibmcloud ce project list  
+   exit 0 
+fi 
+
+PROJECT=$1
+ibmcloud ce project select --name $PROJECT -k
+if [ $? -ne 0 ]; then 
+   printf "Failed to select project: $PROJECT\n"
+   exit 0 
+fi 
+
+export NAMESPACE=`ibmcloud ce project current -o json|jq -r .kube_config_context`
+export LOCK_NAMESPACE=true
+export USE_CONFIGMAP=true
+export LOCK_CONFIGMAP=true
+printf "Starting Guard UI for project: $PROJECT (namespace: $NAMESPACE)\n"
+
+guard-ui
