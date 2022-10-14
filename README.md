@@ -1,5 +1,5 @@
 # Guard
-Guard is a securuty layer to protect your code engine Services.  Guard is developed as open source. The Guard project is presently being adopted by the [Knative Community](http://knative.dev/security-guard). Code Engine users are now able to try out Guard as part of their Code Engine services. Guard core component is the 
+Guard is a security layer to protect your code engine Services.  Guard is developed as open source. The Guard project is presently being adopted by the [Knative Community](http://knative.dev/security-guard). Code Engine users are now able to try out Guard as part of their Code Engine services. Guard core component is the 
 
 ## Security 
 [`guard-gate`](https:pkg/guard-gate) uses Micro-rules to monitor and potentialy block requests and/or responses to services. 
