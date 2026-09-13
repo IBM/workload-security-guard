@@ -20,7 +20,7 @@
     "react-scripts": "^5.0.1"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "node scripts-start.js",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -67,11 +67,11 @@
     "browserslist": "^4.28.9",
     "rollup": "^2.80.0",
     "webpack": "^5.110.3",
-    "webpack-dev-server": "^4.15.2",
+    "webpack-dev-server": "^5.2.6",
     "decode-uri-component": "^0.5.0",
     "@babel/core": "^7.29.7",
     "@babel/plugin-transform-modules-systemjs": "^7.29.4",
-    "uuid": "^8.3.2",
+    "uuid": "^11.1.1",
     "ws": "^7.5.10",
     "underscore": "^1.13.8",
     "loader-utils": "^2.0.4",
@@ -82,6 +82,7 @@
     "express": "^4.21.3",
     "path-to-regexp": "^0.1.13",
     "core-js-compat": "^3.42.0",
-    "typescript": "^4.9.5"
+    "typescript": "^4.9.5",
+    "@tootallnate/once": "^2.0.1"
   }
 }
