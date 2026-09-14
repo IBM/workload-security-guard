@@ -20,7 +20,7 @@ import (
 // a single security plug.
 // It can be extended in the future to managing multiple securiity plugs by using the rtplugs package
 
-var annotationsFilePath = queue.PodInfoVolumeMountPath + "/" + queue.PodInfoAnnotationsFilename
+var annotationsFilePath = queue.PodInfoDirectory + "/" + queue.PodInfoAnnotationsFilename
 var qpextentionPreifx = "qpextention.knative.dev/"
 
 type GateQPOption struct {
