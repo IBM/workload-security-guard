@@ -60,7 +60,7 @@
     "picomatch": "^2.3.2",
     "flatted": "^3.4.4",
     "yaml": "^1.10.3",
-    "follow-redirects": "^1.16.0",
+    "follow-redirects": "^1.16.1",
     "form-data": "^3.0.5",
     "http-proxy-middleware": "^2.0.10",
     "nanoid": "^3.3.19",
